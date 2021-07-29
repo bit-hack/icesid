@@ -48,7 +48,7 @@ module sid_voice(input CLK,         // master clock
                  // sync in
                  // sync out
                  // mix out
-                 output [15:0] OUTPUT
+                 output [11:0] OUTPUT
                  );
 
   // note: if we capture all the SID waveforms we could put them in a blockram
@@ -75,7 +75,7 @@ module sid_voice(input CLK,         // master clock
   // initial conditions
   initial begin
     reg_freq    = 'h4495;  // 1Khz
-    reg_pw      = 'h800;   // 50% duty
+    reg_pw      = 'h400;   // 25% duty
     reg_noise   = 0;       // mute noise
     reg_pulse   = 0;       // mute pulse
     reg_saw     = 1;       // mute sawtooth
@@ -117,12 +117,9 @@ module sid_voice(input CLK,         // master clock
   reg [11:0] wav_tri;
   reg [11:0] wav_noise;
   always @(posedge CLK) begin
-    // todo: why is the saw not interpreted as a signed value?
     wav_saw   <=  phase[23:12];
-    // todo: the pulse is clearly also being interpreted as a signed number
-    wav_pulse <= (phase[23:12] >= reg_pw) ? 12'h800 : 12'h7ff;
-    // todo: why do I have to flip the MSB for the triangle wave?
-    wav_tri   <= (phase[23] ? phase[22:11] : ~phase[22:11]) ^ 12'b100000000000;
+    wav_pulse <= (phase[23:12] >= reg_pw) ? 12'h000 : 12'hfff;
+    wav_tri   <= (phase[23] ? phase[22:11] : ~phase[22:11]);
     // todo: why doesnt the noise channel work
     wav_noise <=  lfsr[22:11];
   end
@@ -132,15 +129,12 @@ module sid_voice(input CLK,         // master clock
   //       not what happens. its much more complex than that, but for now lets
   //       do this and revise it later.
   reg [11:0] wav_mix;
-  reg [15:0] voice_out;
-  assign OUTPUT = voice_out;
+  assign OUTPUT = wav_mix;
   always @(posedge CLK) begin
     wav_mix <= (reg_saw   ? wav_saw   : 12'hfff) &
                (reg_pulse ? wav_pulse : 12'hfff) &
                (reg_tri   ? wav_tri   : 12'hfff) &
                (reg_noise ? wav_noise : 12'hfff);
-    // for now just stuff the 12bit output into the upper bits
-    voice_out <= { wav_mix, 4'd0 };
   end
 
   // address/data decoder
@@ -192,6 +186,11 @@ module sid(input CLK,     // Master clock
     .DATA(DATA),
     .OUTPUT(env0_out));
 
-  assign OUTPUT = voice0_out;
+  // generate a signed output
+  reg signed [15:0] sid_out;
+  assign OUTPUT = sid_out;
+  always @(posedge CLK) begin
+    sid_out <= { ~voice0_out[11], voice0_out[10:0], 4'h0 };
+  end
 
 endmodule
