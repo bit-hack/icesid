@@ -74,7 +74,7 @@ module sid_voice(input CLK,         // master clock
 
   // initial conditions
   initial begin
-    reg_freq    = 'h4495;  // 440Hz
+    reg_freq    = 'h4495;  // 1Khz
     reg_pw      = 'h800;   // 50% duty
     reg_noise   = 0;       // mute noise
     reg_pulse   = 0;       // mute pulse
