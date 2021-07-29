@@ -97,6 +97,11 @@ module sid_voice(input CLK,         // master clock
     end
   end
 
+  initial begin
+    // lfsr must be non zero to produce noise
+    lfsr = 1;
+  end
+
   // noise generator (23bit LFSR)
   // todo: pass in the test bit
   // todo: noise lockup
@@ -120,7 +125,6 @@ module sid_voice(input CLK,         // master clock
     wav_saw   <=  phase[23:12];
     wav_pulse <= (phase[23:12] >= reg_pw) ? 12'h000 : 12'hfff;
     wav_tri   <= (phase[23] ? phase[22:11] : ~phase[22:11]);
-    // todo: why doesnt the noise channel work
     wav_noise <=  lfsr[22:11];
   end
 
