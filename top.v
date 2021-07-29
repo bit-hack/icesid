@@ -24,8 +24,8 @@ module i2s_master_t(
   reg out;
 
   assign SCK = CLK;           // (sck)           12 Mhz
-  assign BCK = counter[2];    // (sck / 4)        3 Mhz
-  assign LCK = counter[8];    // (sck / 256)  46875 Hz 
+  assign BCK = counter[1];    // (sck / 4)        3 Mhz
+  assign LCK = counter[7];    // (sck / 256)  46875 Hz
   assign DIN = shift[15];     // (sck / 4)        3 Mhz
 
   initial begin
@@ -35,8 +35,8 @@ module i2s_master_t(
 
   always @(posedge CLK) begin
     // on the falling edge of BCK
-    if (counter[2:0] == 0) begin
-      if (counter[7:3] == 1) begin
+    if (counter[1:0] == 0) begin
+      if (counter[6:2] == 1) begin
         // re-sample at on BCK after LRCK edge
         shift <= SMP;
       end else begin
