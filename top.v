@@ -1,7 +1,6 @@
 `default_nettype none
 `timescale 1ns / 1ps
 
-`ifdef ICESUGARNANO
 // I2S (inter-IC Sound bus) master
 //
 // tested with PCM5102A
@@ -47,50 +46,6 @@ module i2s_master_t(
     counter <= counter + 'd1;
   end
 endmodule
-`endif
-
-`ifdef ICESUGAR
-module i2s_master_t(
-      input CLK,           // 48Mhz input clock
-      input [15:0] SMP,    // input sample data (twos-compliment format)
-      output SCK,
-      output BCK,
-      output DIN,
-      output LCK            // ~192Khz
-      );
-
-  // 24576000 Hz SCK    CLK/2   (128 x sample-rate)
-  //  6144000 Hz BCK    CLK/8
-  //   192000 Hz LRCK   CLK/256
-  //
-  // 48000000 / 256 = 187500 = 1.024% drift from 192Khz which is still within
-  // the PCM5102A's allowed 4% tolerance.
-
-  reg [7:0] counter;
-  reg [15:0] shift;
-
-  assign SCK = counter[0];  // CLK/2
-  assign BCK = counter[2];  // CLK/8
-  assign LCK = counter[7];  // CLK/256
-  assign DIN = shift[15];   // MSB first
-
-  initial begin
-    counter = 0;
-    shift = 0;
-  end
-  always @(posedge CLK) begin
-    counter <= counter + 1;
-    if (counter[2:0] == 7) begin
-      if (counter[7:3] == 0) begin
-        shift <= SMP;
-      end else begin
-        // rotate
-        shift <= { shift[14:0], shift[15] };
-      end
-    end
-  end
-endmodule
-`endif
 
 // very simple UART receiver 
 module uart_rx(input clk,
@@ -101,22 +56,12 @@ module uart_rx(input clk,
   // ICESUGARNANO baudrates (12Mhz)
   //   9600 - 1250
   //  19200 -  625
-  // ICESUGAR baudrates (48Mhz)
-  //   9600 - 5000
-  //  19200 - 2500
-  //  38400 - 1250
-  // 128000 -  375
-`ifdef ICESUGARNANO
   localparam CLK_RATE = 12000000;
-`endif
-`ifdef ICESUGAR
-  localparam CLK_RATE = 48000000;
-`endif
-  localparam BAUD = 128000;
+  localparam BAUD = 9600;
   localparam CLK_DIV = CLK_RATE / BAUD;
 
-  reg [8:0] clk_count;  // (512 max)
-  reg [3:0] count;      // ( 16 max)
+  reg [10:0] clk_count;   // (2048 max)
+  reg [3:0] count;        // (  16 max)
   reg rx_;
 
   initial begin
@@ -165,39 +110,18 @@ module uart_rx(input clk,
   end
 endmodule
 
-`ifdef ICESUGAR
-// 48Mhz to 1Mhz gate generator
-module sid_clock(input MCLK, output CLK1);
-  reg [5:0] lfsr;
-  assign CLK1 = (lfsr == 'h02);
-  initial begin
-    lfsr <= 'h02;
-  end
-  always @(posedge MCLK) begin
-    // reset the LFSR after 48 cycles
-    if (lfsr <= 'h0d) begin
-      lfsr <= 'h02;
-    end else begin
-      lfsr <= { lfsr[4:0], lfsr[5] ^ lfsr[4] };
-    end
-  end
-endmodule
-`endif
-
-`ifdef ICESUGARNANO
 // 12Mhz to 1Mhz gate generator
-module sid_clock(input MCLK, output CLK1);
+module sid_clock(input CLK, output CLK1);
   reg [11:0] shift;
   assign CLK1 = shift[0];
   initial begin
     shift = 'h001;
   end
-  always @(posedge MCLK) begin
+  always @(posedge CLK) begin
     // rotate left
     shift <= { shift[10:0], shift[11] };
   end
 endmodule
-`endif
 
 module top(input CLK, input RX, output [7:0] PM3);
 
@@ -218,7 +142,7 @@ module top(input CLK, input RX, output [7:0] PM3);
   // instanciate sid clock gate generator
   reg sid_tick;
   sid_clock sid_clk(
-    .MCLK(CLK),
+    .CLK(CLK),
     .CLK1(sid_tick));
 
   // instanciate the SID
@@ -276,5 +200,4 @@ module top(input CLK, input RX, output [7:0] PM3);
       wr <= 0;
     end
   end
-
 endmodule
