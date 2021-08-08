@@ -142,7 +142,7 @@ module top(input CLK, input RX, output [7:0] PM3);
   // note: currently the SID outputs at 1Mhz but is being sampled at around
   //       44Khz this it will alias a lot. on the todo list is a low-pass
   //       filter to remove frequencies > 22Khz. This should be done prior to
-  //       I2C conversion.
+  //       I2S conversion.
 
   // instanciate the uart receiver
   reg [7:0] data;

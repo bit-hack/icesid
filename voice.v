@@ -19,6 +19,9 @@ module sid_voice(input CLK,         // master clock
   //       this would be way more than the available 80Kbit block ram we have
   //       on the ice40up5k device however.
 
+  // tap from the phase acumulator to clock the noise LFSR
+  localparam noise_clk_bit = 19;
+
   // register base address
   parameter BASE_ADDR = 0;
 
@@ -44,17 +47,18 @@ module sid_voice(input CLK,         // master clock
     reg_test    = 0;
     reg_ringmod = 0;
     reg_sync    = 0;
+    noise_clk_lag = 0;
   end
 
   // phase accumulator
   // the oscillator frequency can be calculated as:
   //   Freq = (Mclk * reg_freq) / (16777215)
   reg [23:0] phase;
-  reg phase_msb_lag;
+  reg noise_clk_lag;
   always @(posedge CLK) begin
     if (CLKen) begin
       phase <= phase + { 8'd0, reg_freq };
-      phase_msb_lag <= phase[23];  // delayed MSB
+      noise_clk_lag <= phase[noise_clk_bit];
     end
   end
 
@@ -69,8 +73,8 @@ module sid_voice(input CLK,         // master clock
   reg [22:0] lfsr;
   always @(posedge CLK) begin
     if (CLKen) begin
-      // update noise when phase accumulator wraps
-      if (phase[23] != phase_msb_lag) begin
+      // update noise when bit 19 goes high
+      if (phase[noise_clk_bit] && !noise_clk_lag) begin
         lfsr <= { lfsr[21:0], lfsr[22] ^ lfsr[21] };
       end
     end
@@ -86,7 +90,7 @@ module sid_voice(input CLK,         // master clock
     wav_saw   <=  phase[23:12];
     wav_pulse <= (phase[23:12] >= reg_pw) ? 12'h000 : 12'hfff;
     wav_tri   <= (phase[23] ? phase[22:11] : ~phase[22:11]);
-    wav_noise <=  lfsr[22:11];
+    wav_noise <= { lfsr[20], lfsr[18], lfsr[14], lfsr[11], lfsr[9], lfsr[5], lfsr[2], lfsr[0], 4'b0 };
   end
 
   // waveform mixer
