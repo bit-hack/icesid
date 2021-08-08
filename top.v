@@ -160,7 +160,7 @@ module top(input CLK, input RX, output [7:0] PM3);
     .CLK1(CLKen));
 
   // instanciate the SID
-  reg [15:0] sid_out;
+  reg signed [15:0] sid_out;
   sid psg(
     .CLK(CLK),
     .CLKen(CLKen),
