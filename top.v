@@ -47,66 +47,80 @@ module i2s_master_t(
   end
 endmodule
 
-// very simple UART receiver 
+
 module uart_rx(input clk,
                input rx,
                output reg [7:0] data,
                output reg recv);
 
-  // ICESUGARNANO baudrates (12Mhz)
-  //   9600 - 1250
-  //  19200 -  625
-  localparam CLK_RATE = 12000000;
-  localparam BAUD = 9600;
-  localparam CLK_DIV = CLK_RATE / BAUD;
+  // baud rate 19200 @ 12Mhz
+  // 12000000 / 19200 = 625
 
-  reg [10:0] clk_count;   // (2048 max)
-  reg [3:0] count;        // (  16 max)
-  reg rx_;
+  // @1   = 1     - start
+  // @312 = 137   - half cycle
+  // @625 = 838
+  // @626 = 652   - full cycle
+  reg [9:0] lfsr;
+  wire [9:0] lfsr_next = { lfsr[8:0], lfsr[9] ^ lfsr[6] };
+
+  reg [3:0] count;  // remaining bits
+  reg rx_;          // lag RX for edge detector
 
   initial begin
-    clk_count <= 0;
-    data      <= 0;
-    count     <= 0;  // idle state
+    lfsr      <= 1;
+    data      <= 0; // idle state
+    count     <= 0;
     rx_       <= 1;
     recv      <= 0;
+    start     <= 0;
+    sample    <= 0;
   end
 
+  reg start;        // start bit has been received
+  reg sample;       // sample rx line
+
+  // update the lfsr counter
   always @(posedge clk) begin
+    sample <= 0;
+    if (start && count != 0) begin
+      lfsr <= 'd137;    // start at CLK/2
+    end else begin
+      if (lfsr_next == 'd652) begin
+        sample <= 1;
+        lfsr <= 'd1;    // start at CLK/1
+      end else begin
+        lfsr <= lfsr_next;
+      end
+    end
+  end
+
+  // sample the data
+  always @(posedge clk) begin
+    start <= 0;
     // if we are idle
     if (count == 0) begin
       // if start bit has been detected
       if (rx_ == 1 && rx == 0) begin
-        // set clock count to 1/2 clk_div so we start samping half way
-        // through the data cycle
-        clk_count <= CLK_DIV / 2;
+        start <= 1;
         // 8 bits + start bit
         count <= 9;
       end
     end else begin
       // time to sample the data
-      if (clk_count == 0) begin
+      if (sample) begin
         // shift the data in
         data <= { rx, data[7:1] };
         // reduce count by one
         count <= count - 1;
-        // prime the next counter
-        clk_count <= CLK_DIV;
-      end else begin
-        clk_count <= clk_count - 1;
       end
     end
     // update the edge detector
-    rx_ = rx;
+    rx_ <= rx;
   end
 
   always @(posedge clk) begin
     // if we have just sampled our last bit
-    if (count == 1 && clk_count == 0) begin
-      recv = 1;
-    end else begin
-      recv = 0;
-    end
+    recv <= count == 1 && sample;
   end
 endmodule
 
@@ -140,16 +154,16 @@ module top(input CLK, input RX, output [7:0] PM3);
     .recv(recv));
 
   // instanciate sid clock gate generator
-  reg sid_tick;
+  reg CLKen;
   sid_clock sid_clk(
     .CLK(CLK),
-    .CLK1(sid_tick));
+    .CLK1(CLKen));
 
   // instanciate the SID
   reg [15:0] sid_out;
   sid psg(
     .CLK(CLK),
-    .TICK(sid_tick),
+    .CLKen(CLKen),
     .WR(wr),
     .ADDR(laddr),
     .DATA(ldata),
@@ -163,6 +177,7 @@ module top(input CLK, input RX, output [7:0] PM3);
   assign PM3[1] = BCLK;
   assign PM3[2] = DATA;
   assign PM3[3] = LRCLK;
+  assign PM3[4:7] = 0;
 
   // note: shift signal down a bit so its not too loud (~2vac)
   wire [15:0] VAL = { {3{sid_out[15]}}, sid_out[14:2] };

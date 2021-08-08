@@ -1,0 +1,25 @@
+set_io CLK D1
+
+set_io --warn-no-port LED B6
+
+set_io --warn-no-port RX A3
+set_io --warn-no-port TX B3
+
+set_io --warn-no-port PM1[0] E2
+set_io --warn-no-port PM1[1] D1
+set_io --warn-no-port PM1[2] B1
+set_io --warn-no-port PM1[3] A1
+
+set_io --warn-no-port PM2[0] B3
+set_io --warn-no-port PM2[1] A3
+set_io --warn-no-port PM2[2] B6
+set_io --warn-no-port PM2[3] C5
+
+set_io --warn-no-port PM3[0] B4
+set_io --warn-no-port PM3[1] B5
+set_io --warn-no-port PM3[2] E1
+set_io --warn-no-port PM3[3] B1
+set_io --warn-no-port PM3[4] C6
+set_io --warn-no-port PM3[5] E3
+set_io --warn-no-port PM3[6] C2
+set_io --warn-no-port PM3[7] A1
