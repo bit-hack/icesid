@@ -96,7 +96,7 @@ module sid_voice(input CLK,         // master clock
   always @(posedge CLK) begin
     wav_saw   <=  phase[23:12];
     wav_pulse <= (phase[23:12] >= reg_pw) ? 12'h000 : 12'hfff;
-    wav_tri   <= (phase[23] ? phase[22:11] : ~phase[22:11]);
+    wav_tri   <= ((phase[23] ^ (reg_ringmod & EXTMSB)) ? phase[22:11] : ~phase[22:11]);
     wav_noise <= { lfsr[20], lfsr[18], lfsr[14], lfsr[11], lfsr[9], lfsr[5], lfsr[2], lfsr[0], 4'b0 };
   end
 
