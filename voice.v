@@ -6,9 +6,8 @@ module sid_voice(input CLK,         // master clock
                  input WR,          // data write
                  input [4:0] ADDR,  // address bus
                  input [7:0] DATA,  // data bus
-                 // sync in
-                 // sync out
-                 // mix out
+                 input EXTMSB,      // external msb input
+                 output MSBOUT,
                  output [11:0] OUTPUT
                  );
 
@@ -38,27 +37,35 @@ module sid_voice(input CLK,         // master clock
 
   // initial conditions
   initial begin
-    reg_freq    = 'h4495;  // 1Khz
-    reg_pw      = 'h400;   // 25% duty
-    reg_noise   = 0;       // mute noise
-    reg_pulse   = 0;       // mute pulse
-    reg_saw     = 0;       // mute sawtooth
-    reg_tri     = 1;       // mute triangle
-    reg_test    = 0;
-    reg_ringmod = 0;
-    reg_sync    = 0;
+    reg_freq      = 'h4495; // 1Khz
+    reg_pw        = 'h400;  // 25% duty
+    reg_noise     = 0;      // mute noise
+    reg_pulse     = 0;      // mute pulse
+    reg_saw       = 0;      // mute sawtooth
+    reg_tri       = 1;      // mute triangle
+    reg_test      = 0;
+    reg_ringmod   = 0;
+    reg_sync      = 0;
     noise_clk_lag = 0;
+    extmsb_lag    = 0;
   end
 
   // phase accumulator
   // the oscillator frequency can be calculated as:
   //   Freq = (Mclk * reg_freq) / (16777215)
+  assign MSBOUT = phase[23];
+  reg extmsb_lag;
   reg [23:0] phase;
   reg noise_clk_lag;
   always @(posedge CLK) begin
     if (CLKen) begin
-      phase <= phase + { 8'd0, reg_freq };
+      if (reg_sync && !EXTMSB && extmsb_lag) begin
+        phase <= 0;
+      end else begin
+        phase <= phase + { 8'd0, reg_freq };
+      end
       noise_clk_lag <= phase[noise_clk_bit];
+      extmsb_lag <= EXTMSB;
     end
   end
 

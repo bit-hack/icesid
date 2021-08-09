@@ -34,6 +34,7 @@ module sid(input CLK,         // Master clock
            output signed [15:0] OUTPUT);
 
   // voice 0
+  wire msb0;
   wire [11:0] voice0_out;
   sid_voice #(.BASE_ADDR('h0)) voice0(
     .CLK(CLK),
@@ -41,9 +42,12 @@ module sid(input CLK,         // Master clock
     .WR(WR),
     .ADDR(ADDR),
     .DATA(DATA),
+    .EXTMSB(msb2),
+    .MSBOUT(msb0),
     .OUTPUT(voice0_out));
 
   // voice 1
+  wire msb1;
   wire [11:0] voice1_out;
   sid_voice #(.BASE_ADDR('h7)) voice1(
     .CLK(CLK),
@@ -51,9 +55,12 @@ module sid(input CLK,         // Master clock
     .WR(WR),
     .ADDR(ADDR),
     .DATA(DATA),
+    .EXTMSB(msb0),
+    .MSBOUT(msb1),
     .OUTPUT(voice1_out));
 
   // voice 2
+  wire msb2;
   wire [11:0] voice2_out;
   sid_voice #(.BASE_ADDR('he)) voice2(
     .CLK(CLK),
@@ -61,6 +68,8 @@ module sid(input CLK,         // Master clock
     .WR(WR),
     .ADDR(ADDR),
     .DATA(DATA),
+    .EXTMSB(msb1),
+    .MSBOUT(msb2),
     .OUTPUT(voice2_out));
 
   // envelope 0
