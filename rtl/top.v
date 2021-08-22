@@ -2,27 +2,6 @@
 `define NO_MUACM
 `define BUS_DRIVEN
 
-module sin_tone(
-        input CLK,
-        input CLKen,
-        output signed [15:0] out);
-
-    reg [16:0] sine[1024];
-	initial begin
-		$readmemh("rtl/sine.hex", sine);
-    end
-
-    reg [15:0] counter;
-    assign out = sine[counter[15:6]];
-
-    // 682 = 2^16 * 1000 / 96000
-
-    always @(posedge CLK) begin
-        if (CLKen) begin
-            counter <= counter + 16'd682;
-        end
-    end
-endmodule
 
 module sid_clk(
     input CLK,
@@ -118,7 +97,7 @@ module sid_biu(
     // rising edge of phi2
     assign oCLKen =  bPHI2[1] & !bPHI2[2];
     // falling edge of phi2, WR low, CS low
-    assign oWR    = !bPHI2[1] &  bPHI2[2] & sidWrite & !bCS;
+    assign oWR    = !bPHI2[1] &  bPHI2[2] & sidWrite & !bCS[1];
 endmodule
 
 module top (
