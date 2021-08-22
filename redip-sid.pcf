@@ -1,0 +1,59 @@
+# SPI
+set_io -nowarn             spi_mosi 14
+set_io -nowarn -pullup yes spi_miso 17
+set_io -nowarn             spi_clk  15
+set_io -nowarn -pullup yes spi_cs_n 16
+set_io -nowarn             spi_ram_cs_n 37
+
+# USB
+set_io -nowarn usb_dp 25
+set_io -nowarn usb_dn 23
+set_io -nowarn usb_pu 35
+
+# I2C + Button/LED
+set_io -nowarn scl_led 6
+set_io -nowarn sda_btn 9
+
+# Data bus (gpio)
+set_io -nowarn d0 45
+set_io -nowarn d1 46
+set_io -nowarn d2 47
+set_io -nowarn d3 3
+set_io -nowarn d4 2
+set_io -nowarn d5 4
+set_io -nowarn d6 43
+set_io -nowarn d7 48
+
+# Address bus (gpio)
+set_io -nowarn a0 27
+set_io -nowarn a1 26
+set_io -nowarn a2 34
+set_io -nowarn a3 31
+set_io -nowarn a4 32
+set_io -nowarn a5 42
+set_io -nowarn a8 38
+
+# SID potentiometer pins (gpio)
+set_io -nowarn pot_x 39
+set_io -nowarn pot_y 40
+
+# phi2 (gpio)
+set_io -nowarn phi2 44
+
+# r/w (gpio)
+set_io -nowarn rw 36
+
+# reset_n
+set_io -nowarn reset_n 21
+
+# cs_n
+set_io -nowarn cs_n 28
+
+# I2S
+set_io -nowarn i2s_din 10
+set_io -nowarn i2s_dout 11
+set_io -nowarn i2s_sclk 12
+set_io -nowarn i2s_lrclk 13
+
+# Clock
+set_io -nowarn sys_clk 20
