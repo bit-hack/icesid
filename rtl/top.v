@@ -1,7 +1,8 @@
 `default_nettype none
-`define NO_MUACM
-`define BUS_DRIVEN
 
+//`define NO_MUACM
+//`define SPI_DRIVEN
+`define BUS_DRIVEN
 
 module sid_clk(
     input CLK,
@@ -24,80 +25,27 @@ module sid_clk(
   end
 endmodule
 
-module sid_biu(
-        input        clk,
-        input        d0,    // data lsb
-        input        d1,
-        input        d2,
-        input        d3,
-        input        d4,
-        input        d5,
-        input        d6,
-        input        d7,    // data msb
-        input        a0,    // addr lsb
-        input        a1,
-        input        a2,
-        input        a3,
-        input        a4,    // addr msb
-        input        cs,    // chip seect
-        input        rw,    // read / write
-        input        phi2,
-        output       oCLKen,
-        output [7:0] oData,
-        output [4:0] oAddr,
-        output       oWR    // write strobe
+// A very crappy filter
+// y(n) = y(n-1) * 7/8 + x(n)
+module simple_filter(
+    input                CLK,
+    input                CLKen,
+    input  signed [15:0] in,
+    output signed [15:0] out,
     );
 
-    initial begin
-        bRW      <= 0;
-        bCS      <= 0;
-        bAddr[0] <= 0;
-        bAddr[1] <= 0;
-        bData[0] <= 0;
-        bData[1] <= 0;
-        bPHI2    <= 0;
-    end
+  reg signed [21:0] accum;
+  assign out = accum[20:5];
 
-    // WR signal
-    wire sidWrite = !bRW[1];    // r/w low
-    wire sidRead  =  bRW[1];    // r/w high
-    reg [1:0] bRW;
-    always @(posedge clk) begin
-        bRW <= { bRW[0], rw };
-    end
+  initial begin
+    accum <= 0;
+  end
 
-    // chip select signal
-    reg [1:0] bCS;              // cs active low
-    always @(posedge clk) begin
-        bCS <= { bCS[0], cs };
+  always @(posedge CLK) begin
+    if (CLKen) begin
+      accum <= (accum - (accum >>> 3)) + in;
     end
-
-    // register address
-    reg [4:0] bAddr[2];
-    always @(posedge clk) begin
-        bAddr[0] <= { a4, a3, a2, a1, a0 };
-        bAddr[1] <= bAddr[0];
-    end
-
-    // register data
-    reg [7:0] bData[2];
-    always @(posedge clk) begin
-        bData[0] <= { d7, d6, d5, d4, d3, d2, d1, d0 };
-        bData[1] <= bData[0];
-    end
-
-    // register phi2
-    reg [2:0] bPHI2;
-    always @(posedge clk) begin
-        bPHI2 <= { bPHI2[1:0], phi2 };
-    end
-
-    assign oData  = bData[1];
-    assign oAddr  = bAddr[1];
-    // rising edge of phi2
-    assign oCLKen =  bPHI2[1] & !bPHI2[2];
-    // falling edge of phi2, WR low, CS low
-    assign oWR    = !bPHI2[1] &  bPHI2[2] & sidWrite & !bCS[1];
+  end
 endmodule
 
 module top (
@@ -143,8 +91,8 @@ module top (
 
 `ifdef SPI_DRIVEN
     // SPI slave
-    wire [7:0] spi_data;
-    wire spi_recv;
+    reg [7:0] spi_data;
+    reg spi_recv;
     spi_slave spi(
         sys_clk,            // system clock
         d0,                 // spi clock
@@ -201,21 +149,24 @@ module top (
     );
 `endif
 
+    wire signed [15:0] flt_out;
+    simple_filter flt(sys_clk, CLKen, sid_out, flt_out);
+
     // SID
+    wire signed [15:0] sid_out;
     sid the_sid(
            sys_clk,             // Master clock
            CLKen,               // 1Mhz enable
            wr,                  // write data to sid addr
            laddr,
            ldata,
-           i2s_in);
+           sid_out);
 
     // I2S encoder
-    wire signed [15:0] i2s_in;
     wire i2s_sampled;
     i2s i2s_tx(
         sys_clk,
-        i2s_in,
+        flt_out,
         i2s_sclk,
         i2s_lrclk,
         i2s_din,

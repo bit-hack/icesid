@@ -115,13 +115,68 @@ module sid(input CLK,         // Master clock
   mdac mdac1(CLK, voice1_signed, env1_out, voice1_amp);
   mdac mdac2(CLK, voice2_signed, env2_out, voice2_amp);
 
-  // simply sum the output of each channels dac
-  reg signed [15:0] sid_out;
-  assign OUTPUT = sid_out;
+  wire signed [15:0] sid_filter_lp;
+  wire signed [15:0] sid_filter_bp;
+  wire signed [15:0] sid_filter_hp;
+  filter sid_filter(
+    CLK,
+    CLKen,
+    pre_filter,
+    WR,
+    ADDR,
+    DATA,
+    sid_filter_lp,
+    sid_filter_bp,
+    sid_filter_hp
+    );
+
+  // pre-filter mixer
+  reg signed [15:0] pre_filter;
   always @(posedge CLK) begin
-    // shifts are there to create some headroom
-    sid_out <= (voice0_amp >>> 2) +
-               (voice1_amp >>> 2) +
-               (voice2_amp >>> 2);
+    pre_filter <=
+      (reg_filt[0] ? (voice0_amp >>> 3) : 0) +
+      (reg_filt[1] ? (voice1_amp >>> 3) : 0) +
+      (reg_filt[2] ? (voice2_amp >>> 3) : 0);
+  end
+
+  // filter bypass mixer
+  reg signed [15:0] bypass;
+  always @(posedge CLK) begin
+    bypass <=
+      (reg_filt[0] ? 0 : (voice0_amp >>> 3)) +
+      (reg_filt[1] ? 0 : (voice1_amp >>> 3)) +
+      (reg_filt[2] ? 0 : (voice2_amp >>> 3));
+  end
+
+  // post_filter mixer
+  reg signed [15:0] post_filter;
+  always @(posedge CLK) begin
+    post_filter <=
+      bypass +
+      (reg_mode[0] ? sid_filter_lp : 0) +
+      (reg_mode[1] ? sid_filter_bp : 0) +
+      (reg_mode[2] ? sid_filter_hp : 0);
+  end
+
+  // SID output
+  // XXX: still do do is the final volume stage
+  assign OUTPUT = post_filter;
+
+  // address/data decoder
+  reg [2:0] reg_filt;   // voice routing
+  reg [2:0] reg_mode;   // filter mode
+  reg [3:0] reg_volume; // master volume
+  always @(posedge CLK) begin
+    if (WR) begin
+      case (ADDR)
+      'h17: begin
+        reg_filt <= DATA[2:0];
+      end
+      'h18: begin
+        reg_mode   <= DATA[6:4];
+        reg_volume <= DATA[3:0];
+      end
+      endcase
+    end
   end
 endmodule

@@ -12,12 +12,12 @@
 #  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 #  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-PROJ = i2s_test
+PROJ = icesid
 SRC_DIR = rtl
 BUILD_DIR = build
 SIM_DIR = sim
 TOPFILE = $(addprefix $(SRC_DIR)/,top.v)
-SRCS = i2c_state_machine.v i2c_master.v muacm.v sysmgr_hfosc.v sid.v env.v voice.v i2s.v spi.v
+SRCS = i2c_state_machine.v i2c_master.v muacm.v sysmgr_hfosc.v sid.v env.v voice.v i2s.v spi.v biu.v filter.v
 ALL_SRCS = $(addprefix $(SRC_DIR)/,$(SRCS))
 DRAW_DIR = drawings
 SEED = 1337
