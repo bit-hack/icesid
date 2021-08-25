@@ -15,29 +15,16 @@
 PROJ = icesid
 SRC_DIR = rtl
 BUILD_DIR = build
-SIM_DIR = sim
 TOPFILE = $(addprefix $(SRC_DIR)/,top.v)
 SRCS = i2c_state_machine.v i2c_master.v muacm.v sysmgr_hfosc.v sid.v env.v voice.v i2s.v spi.v biu.v filter.v
 ALL_SRCS = $(addprefix $(SRC_DIR)/,$(SRCS))
-DRAW_DIR = drawings
 SEED = 1337
 BOARD = redip-sid
 DEVICE = up5k
 PACKAGE = sg48
 FREQ = 24 # MHz
 
-ICE40_LIBS ?= $(shell yosys-config --datdir/ice40/cells_sim.v)
-
 all: $(BUILD_DIR)/$(PROJ).bin $(BUILD_DIR)/$(PROJ).rpt
-
-draw: $(addprefix $(DRAW_DIR)/, $(subst .v,.svg,$(TOPFILE))) $(addprefix $(DRAW_DIR)/,$(subst .v,.svg,$(SRCS))) clean_dot
-
-clean_dot: 
-	rm -f $(DRAW_DIR)/*.dot
-
-$(DRAW_DIR)/%.svg: $(SRC_DIR)/%.v $(TOPFILE) $(ALL_SRCS)
-	@mkdir -p $(@D)
-	yosys -p 'read_verilog $<; show -prefix $(addprefix $(DRAW_DIR)/,$*) -format svg $*'
 
 $(BUILD_DIR)/$(PROJ).json: $(TOPFILE) $(ALL_SRCS)
 	@mkdir -p $(@D)
@@ -54,20 +41,6 @@ $(BUILD_DIR)/$(PROJ).bin: $(BUILD_DIR)/$(PROJ).asc
 $(BUILD_DIR)/$(PROJ).rpt: $(BUILD_DIR)/$(PROJ).asc
 	@mkdir -p $(@D)
 
-$(BUILD_DIR)/i2c_state_machine_tb: $(SIM_DIR)/i2c_state_machine_tb.v $(ICE40_LIBS) $(ALL_SRCS)
-	@mkdir -p $(@D)
-	iverilog -g2012 -Wall -Wno-portbind -Wno-timescale -DSIM=1 -DNO_ICE40_DEFAULT_ASSIGNMENTS -o $@  $^
-
-$(BUILD_DIR)/i2s_master_tb: $(SIM_DIR)/i2s_master_tb.v $(SRC_DIR)/i2s_master.v
-	@mkdir -p $(@D)
-	iverilog -g2012 -Wall -Wno-portbind -DSIM=1 -DNO_ICE40_DEFAULT_ASSIGNMENTS -o $@  $^
-
-$(BUILD_DIR)/top_tb: $(SIM_DIR)/top_tb.v $(ICE40_LIBS) $(ALL_SRCS) $(TOPFILE)
-	@mkdir -p $(@D)
-	iverilog -g2012 -Wall -Wno-portbind -Wno-timescale -DSIM=1 -DNO_ICE40_DEFAULT_ASSIGNMENTS -o $@  $^
-
-sim: $(BUILD_DIR)/i2c_state_machine_tb $(BUILD_DIR)/i2s_master_tb $(BUILD_DIR)/top_tb
-
 prog: $(BUILD_DIR)/$(PROJ).bin
 	dfu-util --device 1d50:6159:1d50:6156 --alt 0 -R --download $<
 
@@ -76,7 +49,7 @@ sudo-prog: $(BUILD_DIR)/$(PROJ).bin
 	sudo dfu-util --device 1d50:6159:1d50:6156 --alt 0 -R --download $<
 
 clean:
-	rm -rf $(BUILD_DIR) obj_dir $(DRAW_DIR)
+	rm -rf $(BUILD_DIR) obj_dir
 
 .SECONDARY:
-.PHONY: all prog clean draw sudo-prog sim
+.PHONY: all prog clean sudo-prog
