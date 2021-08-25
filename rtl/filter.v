@@ -43,13 +43,13 @@ module filter(
   assign oBP = band;
   assign oHP = high;
 
-  // note: currently this mas the filter register into a very lineary
+  // note: currently this maps the filter register into a very lineary
   //       range from 0Hz to 20Khz. This is not accurate and should be
   //       fed froma lookup table.
   wire [15:0] cutCoef = reg_freq << 2;
 
   // note: the resonance coefficient is backwards and increases resonance
-  //       as it aproaches zero. this is currently arbitaraly mapped to
+  //       as it aproaches zero. this is currently arbitaraly mapped
   //       into a useable range but should be tuned in the future.
   wire [15:0] resCoef = 16'hbfff - (reg_res << 11);
 
@@ -74,7 +74,7 @@ module filter(
 
   // note: this filter uses 0:16 fixed point format and thus has no extra
   //       headroom from the main 16bit audio path. large resonance values
-  //       can and will cause it to clip. we should use signed arithetic
+  //       can and will cause it to clip. we should use saturating arithetic
   //       here so its not so harsh.
 
   // note: the output of each filter mode is delayed by a number of cycles
