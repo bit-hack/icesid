@@ -226,11 +226,11 @@ module sid_env(input CLK,           // master clock
                    .OUT  (OUTPUT));
 
   initial begin
-    reg_gate    = 0;
-    reg_att     = 0;
-    reg_dec     = 0;
-    reg_sus     = 'hf;      // 100% sustain
-    reg_rel     = 0;
+    reg_gate = 0;
+    reg_att  = 0;
+    reg_dec  = 0;
+    reg_sus  = 'hf;      // 100% sustain
+    reg_rel  = 0;
   end
 
   // address/data decoder

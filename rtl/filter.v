@@ -60,12 +60,12 @@ module filter(
   mult mul(clk, mulA, mulB, mulOut);
 
   initial begin
-    state <= 0;
-    low   <= 0;
-    high  <= 0;
-    band  <= 0;
-    mulA  <= 0;
-    mulB  <= 0;
+    state = 0;
+    low   = 0;
+    high  = 0;
+    band  = 0;
+    mulA  = 0;
+    mulB  = 0;
   end
 
   // note: due to the registering of the multiplier inputs some extra
@@ -121,9 +121,9 @@ module filter(
   always @(posedge clk) begin
     if (WR) begin
       case (ADDR)
-      ('h15): begin reg_freq <= { reg_freq[10:3], DATA[2:0] }; end
-      ('h16): begin reg_freq <= { DATA[7:0], reg_freq[2:0] };  end
-      ('h17): begin reg_res  <= { DATA[7:4] };                 end
+      'h15: begin reg_freq <= { reg_freq[10:3], DATA[2:0] }; end
+      'h16: begin reg_freq <= { DATA[7:0], reg_freq[2:0] };  end
+      'h17: begin reg_res  <= { DATA[7:4] };                 end
       endcase
     end
   end

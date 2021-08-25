@@ -70,22 +70,27 @@ module top (
     input wire d2   // CS
 `endif
 `ifdef BUS_DRIVEN
-    input wire d0,
-    input wire d1,
-    input wire d2,
-    input wire d3,
-    input wire d4,
-    input wire d5,
-    input wire d6,
-    input wire d7,
-    input wire a0,
-    input wire a1,
-    input wire a2,
-    input wire a3,
-    input wire a4,
-    input wire phi2,
-    input wire cs_n,
-    input wire rw
+    // data bus
+    inout  wire d0,
+    inout  wire d1,
+    inout  wire d2,
+    inout  wire d3,
+    inout  wire d4,
+    inout  wire d5,
+    inout  wire d6,
+    inout  wire d7,
+    // address bus
+    inout  wire a0,
+    inout  wire a1,
+    inout  wire a2,
+    inout  wire a3,
+    inout  wire a4,
+    // sid clock
+    inout  wire phi2,
+    // sid chip select
+    inout  wire cs_n,
+    // sid read/write
+    inout  wire rw
 `endif
 );
 
@@ -108,21 +113,21 @@ module top (
     //    1AAA AADD   - address, data MSB
     //    0?DD DDDD   -          data LSB
     //
-    reg [4:0] laddr;  // latched address
-    reg [7:0] ldata;  // latched data
-    reg wr;           // write signal
+    reg [4:0] addrBusIn;    // latched address
+    reg [7:0] dataBusIn;    // latched data
+    reg wrStrobe;           // write signal
     always @(posedge sys_clk) begin
         if (spi_recv) begin
             if (spi_data[7] == 'b1) begin
-                wr <= 0;
-                laddr <= spi_data[6:2];
-                ldata <= { spi_data[1:0], ldata[5:0] };
+                wrStrobe <= 0;
+                addrBusIn <= spi_data[6:2];
+                dataBusIn <= { spi_data[1:0], dataBusIn[5:0] };
             end else begin
-                wr <= 1;
-                ldata <= { ldata[7:6], spi_data[5:0] };
+                wrStrobe <= 1;
+                dataBusIn <= { dataBusIn[7:6], spi_data[5:0] };
             end
         end else begin
-            wr <= 0;
+            wrStrobe <= 0;
         end
     end
 
@@ -131,22 +136,58 @@ module top (
     sid_clk sid_clk_en(sys_clk, CLKen);
 `endif
 `ifdef BUS_DRIVEN
-    wire CLKen;
-    wire [4:0] laddr;  // latched address
-    wire [7:0] ldata;  // latched data
-    wire wr;           // write signal
-    sid_biu bui(
-        sys_clk,
-        d0, d1, d2, d3, d4, d5, d6, d7,     // data pins
-        a0, a1, a2, a3, a4,                 // addr pins
-        cs_n,                               // cs
-        rw,                                 // r/w
-        phi2,                               // phi2
-        CLKen,                              // sid clken out
-        ldata,                              // data out
-        laddr,                              // addr out
-        wr                                  // write strobe
+
+    reg        wrStrobe;
+    reg        dataBusOE;
+    reg  [7:0] dataBusOut;
+    wire [7:0] dataBusIn;
+    wire [4:0] addrBusIn;
+
+    wire sidCLK, sidCS, sidRW;
+
+    initial begin
+        dataBusOE  <= 0;
+        dataBusOut <= 0;
+        sidCLKPrev <= 0;
+        wrStrobe   <= 0;
+    end
+
+    SB_IO #(
+        .PIN_TYPE(6'b1010_00),  // Reg input, tristate output
+        .PULLUP(1'b0)
+    ) dataBusPins[7:0] (
+        .PACKAGE_PIN({d7, d6, d5, d4, d3, d2, d1, d0}),
+        .OUTPUT_ENABLE({8{ dataBusOE }}),
+        .INPUT_CLK(sys_clk),
+        .D_OUT_0(dataBusOut),
+        .D_IN_0(dataBusIn)
     );
+
+    SB_IO #(
+        .PIN_TYPE(6'b0000_00),  // Reg input, no output
+        .PULLUP(1'b0),
+    ) addrBusPins[4:0] (
+        .PACKAGE_PIN({a4, a3, a2, a1, a0}),
+        .INPUT_CLK(sys_clk),
+        .D_IN_0(addrBusIn)
+    );
+
+    SB_IO #(
+        .PIN_TYPE(6'b0000_00),  // Reg input, no output
+        .PULLUP(1'b0)
+    ) ctrlBusPins[2:0] (
+        .PACKAGE_PIN({ phi2, cs_n, rw }),
+        .INPUT_CLK(sys_clk),
+        .D_IN_0({sidCLK, sidCS, sidRW})
+    );
+
+    reg CLKen;
+    reg sidCLKPrev;
+    always @(posedge sys_clk) begin
+        sidCLKPrev <= sidCLK;
+        CLKen      <= (sidCLKPrev & !sidCLK);
+        wrStrobe   <= (sidCLKPrev & !sidCLK) & !sidCS & !sidRW;
+    end
 `endif
 
     wire signed [15:0] flt_out;
@@ -157,9 +198,9 @@ module top (
     sid the_sid(
            sys_clk,             // Master clock
            CLKen,               // 1Mhz enable
-           wr,                  // write data to sid addr
-           laddr,
-           ldata,
+           wrStrobe,            // write data to sid addr
+           addrBusIn,
+           dataBusIn,
            sid_out);
 
     // I2S encoder
