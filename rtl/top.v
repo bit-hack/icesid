@@ -113,94 +113,67 @@ module top (
     //    1AAA AADD   - address, data MSB
     //    0?DD DDDD   -          data LSB
     //
-    reg [4:0] addrBusIn;    // latched address
-    reg [7:0] dataBusIn;    // latched data
-    reg wrStrobe;           // write signal
+    reg [4:0] bus_addr;     // latched address
+    reg [7:0] bus_wdata;    // latched data
+    reg bus_we;           // write signal
     always @(posedge sys_clk) begin
         if (spi_recv) begin
             if (spi_data[7] == 'b1) begin
-                wrStrobe <= 0;
-                addrBusIn <= spi_data[6:2];
-                dataBusIn <= { spi_data[1:0], dataBusIn[5:0] };
+                bus_we <= 0;
+                bus_addr <= spi_data[6:2];
+                bus_wdata <= { spi_data[1:0], bus_wdata[5:0] };
             end else begin
-                wrStrobe <= 1;
-                dataBusIn <= { dataBusIn[7:6], spi_data[5:0] };
+                bus_we <= 1;
+                bus_wdata <= { bus_wdata[7:6], spi_data[5:0] };
             end
         end else begin
-            wrStrobe <= 0;
+            bus_we <= 0;
         end
     end
 
     // SID 1Mhz clock
-    wire CLKen;
-    sid_clk sid_clk_en(sys_clk, CLKen);
+    wire clk_en;
+    sid_clk sid_clk_en(sys_clk, clk_en);
 `endif
 `ifdef BUS_DRIVEN
 
-    reg        wrStrobe;
-    reg        dataBusOE;
-    reg  [7:0] dataBusOut;
-    wire [7:0] dataBusIn;
-    wire [4:0] addrBusIn;
+    wire [4:0] bus_addr;
+    wire [7:0] bus_wdata;
+    reg  [7:0] bus_rdata;
+    wire       bus_we;
+    wire       clk_en;
+    reg        bus_re;
 
-    wire sidCLK, sidCS, sidRW;
-
-    initial begin
-        dataBusOE  <= 0;
-        dataBusOut <= 0;
-        sidCLKPrev <= 0;
-        wrStrobe   <= 0;
-    end
-
-    SB_IO #(
-        .PIN_TYPE(6'b1010_00),  // Reg input, tristate output
-        .PULLUP(1'b0)
-    ) dataBusPins[7:0] (
-        .PACKAGE_PIN({d7, d6, d5, d4, d3, d2, d1, d0}),
-        .OUTPUT_ENABLE({8{ dataBusOE }}),
-        .INPUT_CLK(sys_clk),
-        .D_OUT_0(dataBusOut),
-        .D_IN_0(dataBusIn)
+    sid_bus_if bus (
+        // Pads
+        .pad_a({a4, a3, a2, a1, a0}),
+        .pad_d({d7, d6, d5, d4, d3, d2, d1, d0}),
+        .pad_r_wn(rw),
+        .pad_csn(cs_n),
+        .pad_phi2(phi2),
+        // Internal bus
+        .bus_addr(bus_addr),
+        .bus_rdata(bus_rdata),  // sid to c64
+        .bus_wdata(bus_wdata),  // c64 to sid
+        .bus_we(bus_we),
+        .clk_en(clk_en),
+        // Clock
+        .clk(sys_clk),
+        .rst(rst)
     );
-
-    SB_IO #(
-        .PIN_TYPE(6'b0000_00),  // Reg input, no output
-        .PULLUP(1'b0),
-    ) addrBusPins[4:0] (
-        .PACKAGE_PIN({a4, a3, a2, a1, a0}),
-        .INPUT_CLK(sys_clk),
-        .D_IN_0(addrBusIn)
-    );
-
-    SB_IO #(
-        .PIN_TYPE(6'b0000_00),  // Reg input, no output
-        .PULLUP(1'b0)
-    ) ctrlBusPins[2:0] (
-        .PACKAGE_PIN({ phi2, cs_n, rw }),
-        .INPUT_CLK(sys_clk),
-        .D_IN_0({sidCLK, sidCS, sidRW})
-    );
-
-    reg CLKen;
-    reg sidCLKPrev;
-    always @(posedge sys_clk) begin
-        sidCLKPrev <= sidCLK;
-        CLKen      <= (sidCLKPrev & !sidCLK);
-        wrStrobe   <= (sidCLKPrev & !sidCLK) & !sidCS & !sidRW;
-    end
 `endif
 
     wire signed [15:0] flt_out;
-    simple_filter flt(sys_clk, CLKen, sid_out, flt_out);
+    simple_filter flt(sys_clk, clk_en, sid_out, flt_out);
 
     // SID
     wire signed [15:0] sid_out;
     sid the_sid(
            sys_clk,             // Master clock
-           CLKen,               // 1Mhz enable
-           wrStrobe,            // write data to sid addr
-           addrBusIn,
-           dataBusIn,
+           clk_en,              // 1Mhz enable
+           bus_we,              // write data to sid addr
+           bus_addr,
+           bus_wdata,
            sid_out);
 
     // I2S encoder
@@ -214,15 +187,12 @@ module top (
         i2s_sampled
     );
 
-    // Little blinky
-    wire led = CLKen;
-
     // I2C setup
     i2c_state_machine ism(
         .scl_led(scl_led),
         .sda_btn(sda_btn),
         .btn    (),
-        .led    (led),
+        .led    (bus_we),
         .done   (),
         .clk    (sys_clk),
         .rst    (rst)
