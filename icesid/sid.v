@@ -68,10 +68,11 @@ module sid(
     );
 
   initial begin
-    reg_volume     = 4'hf;   // turn on by default
+    reg_volume     = 4'hf;
     reg_filt       = 0;
     reg_mode       = 0;
     reg_last_write = 0;
+    reg_3off       = 0;
   end
 
   // voice 0
@@ -183,9 +184,9 @@ module sid(
   reg signed [15:0] bypass;
   always @(posedge CLK) begin
     bypass <=
-      (reg_filt[0] ? 0 : (voice0_amp >>> 3)) +
-      (reg_filt[1] ? 0 : (voice1_amp >>> 3)) +
-      (reg_filt[2] ? 0 : (voice2_amp >>> 3));
+      ( reg_filt[0]             ? 8'b0 : (voice0_amp >>> 3)) +
+      ( reg_filt[1]             ? 8'b0 : (voice1_amp >>> 3)) +
+      ((reg_filt[2] | reg_3off) ? 8'b0 : (voice2_amp >>> 3));
   end
 
   // post_filter mixer
@@ -214,6 +215,8 @@ module sid(
   //       register during a register read of write only reg.
   always @(*) begin
     case (ADDR)
+    'h19:    DATAR <= 8'h00;              // potx
+    'h1a:    DATAR <= 8'h00;              // poty
     'h1b:    DATAR <= voice2_out[11:4];   // osc3 MSB
     'h1c:    DATAR <= env2_out;           // env3
     default: DATAR <= reg_last_write;     // potx/poty
@@ -225,17 +228,17 @@ module sid(
   reg [2:0] reg_mode;       // filter mode
   reg [3:0] reg_volume;     // master volume
   reg [7:0] reg_last_write; // last writen value
+  reg       reg_3off;       // osc3 off
   always @(posedge CLK) begin
     if (WR) begin
       // kee track of the last write for read purposes
       reg_last_write <= DATAW;
       case (ADDR)
-      'h17: begin
-        reg_filt <= DATAW[2:0];
-      end
+      'h17: reg_filt <= DATAW[2:0];
       'h18: begin
-        reg_mode   <= DATAW[6:4];
-        reg_volume <= DATAW[3:0];
+        reg_mode     <= DATAW[6:4];
+        reg_volume   <= DATAW[3:0];
+//        reg_3off     <= DATAW[7];
       end
       endcase
     end
