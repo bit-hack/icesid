@@ -105,7 +105,9 @@ module sid_voice(input CLK,         // master clock
   //       not what happens. its much more complex than that, but for now lets
   //       do this and revise it later.
   reg [11:0] wav_mix;
-  assign OUTPUT = wav_mix;
+
+  // note: we invert here so that when all channels are off a zero is produced.
+  assign OUTPUT = ~wav_mix;
   always @(posedge CLK) begin
     wav_mix <= (reg_saw   ? wav_saw   : 12'hfff) &
                (reg_pulse ? wav_pulse : 12'hfff) &

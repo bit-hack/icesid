@@ -1,29 +1,6 @@
 `default_nettype none
 
 //`define NO_MUACM
-//`define SPI_DRIVEN
-`define BUS_DRIVEN
-
-module sid_clk(
-    input CLK,
-    output CLKen
-    );
-
-  reg [4:0] counter;
-  wire CLKen = (counter == 0);
-
-  initial begin
-      counter <= 0;
-  end
-
-  always @(posedge CLK) begin
-      if (CLKen) begin
-          counter <= 5'd23;
-      end else begin
-          counter <= counter - 5'd1;
-      end
-  end
-endmodule
 
 // A very crappy filter
 // y(n) = y(n-1) * 7/8 + x(n)
@@ -63,13 +40,6 @@ module top (
     output wire usb_pu,
     // Clock
     input  wire sys_clk,
-`ifdef SPI_DRIVEN
-    // SPI bus
-    input wire d0,  // SCLK
-    input wire d1,  // MOSI
-    input wire d2   // CS
-`endif
-`ifdef BUS_DRIVEN
     // data bus
     inout  wire d0,
     inout  wire d1,
@@ -91,55 +61,10 @@ module top (
     inout  wire cs_n,
     // sid read/write
     inout  wire rw
-`endif
 );
-
-`ifdef SPI_DRIVEN
-    // SPI slave
-    reg [7:0] spi_data;
-    reg spi_recv;
-    spi_slave spi(
-        sys_clk,            // system clock
-        d0,                 // spi clock
-        d1,                 // spi mosi
-        d2,                 // spi chip select
-        spi_data,           // data out
-        spi_recv            // data received
-    );
-
-    // input data decoder
-    //
-    // receive format:
-    //    1AAA AADD   - address, data MSB
-    //    0?DD DDDD   -          data LSB
-    //
-    reg [4:0] bus_addr;     // latched address
-    reg [7:0] bus_wdata;    // latched data
-    reg bus_we;           // write signal
-    always @(posedge sys_clk) begin
-        if (spi_recv) begin
-            if (spi_data[7] == 'b1) begin
-                bus_we <= 0;
-                bus_addr <= spi_data[6:2];
-                bus_wdata <= { spi_data[1:0], bus_wdata[5:0] };
-            end else begin
-                bus_we <= 1;
-                bus_wdata <= { bus_wdata[7:6], spi_data[5:0] };
-            end
-        end else begin
-            bus_we <= 0;
-        end
-    end
-
-    // SID 1Mhz clock
-    wire clk_en;
-    sid_clk sid_clk_en(sys_clk, clk_en);
-`endif
-`ifdef BUS_DRIVEN
-
     wire [4:0] bus_addr;
     wire [7:0] bus_wdata;
-    reg  [7:0] bus_rdata;
+    wire [7:0] bus_rdata;
     wire       bus_we;
     wire       clk_en;
     reg        bus_re;
@@ -161,7 +86,6 @@ module top (
         .clk(sys_clk),
         .rst(rst)
     );
-`endif
 
     wire signed [15:0] flt_out;
     simple_filter flt(sys_clk, clk_en, sid_out, flt_out);
@@ -169,12 +93,14 @@ module top (
     // SID
     wire signed [15:0] sid_out;
     sid the_sid(
-           sys_clk,             // Master clock
-           clk_en,              // 1Mhz enable
-           bus_we,              // write data to sid addr
-           bus_addr,
-           bus_wdata,
-           sid_out);
+        .CLK(sys_clk),          // Master clock
+        .CLKen(clk_en),         // 1Mhz enable
+        .WR(bus_we),            // write data to sid addr
+        .ADDR(bus_addr),        // SID address bus
+        .DATAW(bus_wdata),      // C64 to SID
+        .DATAR(bus_rdata),      // SID to C64
+        .OUTPUT(sid_out)        // SID output
+    );
 
     // I2S encoder
     wire i2s_sampled;

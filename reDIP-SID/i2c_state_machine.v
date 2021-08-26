@@ -242,7 +242,7 @@ module i2c_state_machine (
 
 	// Init from file
 	initial
-		$readmemh("rtl/i2s_init_data.hex", ram_mem);
+		$readmemh("i2s_init_data.hex", ram_mem);
 
 	// Sync read
 	always @(posedge clk)

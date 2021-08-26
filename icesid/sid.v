@@ -1,10 +1,37 @@
 `default_nettype none
 `timescale 1ns / 1ps
 
-module mdac(input CLK,
-            input signed [11:0] VOICE,
-            input [7:0] ENV,
-            output signed [15:0] OUTPUT);
+// 16x4 multiplier used for master volume
+module mdac16x4(input CLK,
+                input signed [15:0] VOICE,
+                input [3:0] VOL,
+                output signed [15:0] OUTPUT);
+
+  wire signed [31:0] product;  // 16x16 product
+  SB_MAC16 mac(
+    .A(VOICE),
+    .B({12'b0, VOL}),
+    .O(product),
+    .CLK(CLK),
+  );
+
+  defparam mac.A_SIGNED = 1'b1;           // voice is signed
+  defparam mac.B_SIGNED = 1'b0;           // env is unsigned
+  defparam mac.TOPOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
+  defparam mac.BOTOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
+
+  reg [15:0] out;
+  assign OUTPUT = out;
+  always @(posedge CLK) begin
+    out <= product[19:4];
+  end
+endmodule
+
+// 12x8 multiplier used for voice envelopes
+module mdac12x8(input CLK,
+                input signed [11:0] VOICE,
+                input [7:0] ENV,
+                output signed [15:0] OUTPUT);
 
   wire signed [31:0] product;  // 16x16 product
   SB_MAC16 mac(
@@ -26,12 +53,19 @@ module mdac(input CLK,
   end
 endmodule
 
-module sid(input CLK,         // Master clock
-           input CLKen,       // 1Mhz enable
-           input WR,          // write data to sid addr
-           input [4:0] ADDR,
-           input [7:0] DATA,
+module sid(input                CLK,     // Master clock
+           input                CLKen,   // 1Mhz enable
+           input                WR,      // write data to sid addr
+           input         [ 4:0] ADDR,    // sid address
+           input         [ 7:0] DATAW,   // C64 to SID
+           output        [ 7:0] DATAR,   // SID to C64
            output signed [15:0] OUTPUT);
+
+  initial begin
+    reg_volume = 4'hf;   // turn on by default
+    reg_filt   = 0;
+    reg_mode   = 0;
+  end
 
   // voice 0
   wire msb0;
@@ -41,7 +75,7 @@ module sid(input CLK,         // Master clock
     .CLKen(CLKen),
     .WR(WR),
     .ADDR(ADDR),
-    .DATA(DATA),
+    .DATA(DATAW),
     .EXTMSB(msb2),
     .MSBOUT(msb0),
     .OUTPUT(voice0_out));
@@ -54,7 +88,7 @@ module sid(input CLK,         // Master clock
     .CLKen(CLKen),
     .WR(WR),
     .ADDR(ADDR),
-    .DATA(DATA),
+    .DATA(DATAW),
     .EXTMSB(msb0),
     .MSBOUT(msb1),
     .OUTPUT(voice1_out));
@@ -67,7 +101,7 @@ module sid(input CLK,         // Master clock
     .CLKen(CLKen),
     .WR(WR),
     .ADDR(ADDR),
-    .DATA(DATA),
+    .DATA(DATAW),
     .EXTMSB(msb1),
     .MSBOUT(msb2),
     .OUTPUT(voice2_out));
@@ -79,7 +113,7 @@ module sid(input CLK,         // Master clock
     .CLKen(CLKen),
     .WR(WR),
     .ADDR(ADDR),
-    .DATA(DATA),
+    .DATA(DATAW),
     .OUTPUT(env0_out));
 
   // envelope 1
@@ -89,7 +123,7 @@ module sid(input CLK,         // Master clock
     .CLKen(CLKen),
     .WR(WR),
     .ADDR(ADDR),
-    .DATA(DATA),
+    .DATA(DATAW),
     .OUTPUT(env1_out));
 
   // envelope 2
@@ -99,7 +133,7 @@ module sid(input CLK,         // Master clock
     .CLKen(CLKen),
     .WR(WR),
     .ADDR(ADDR),
-    .DATA(DATA),
+    .DATA(DATAW),
     .OUTPUT(env2_out));
 
   // convert to signed format
@@ -111,9 +145,9 @@ module sid(input CLK,         // Master clock
   reg signed [15:0] voice0_amp;
   reg signed [15:0] voice1_amp;
   reg signed [15:0] voice2_amp;
-  mdac mdac0(CLK, voice0_signed, env0_out, voice0_amp);
-  mdac mdac1(CLK, voice1_signed, env1_out, voice1_amp);
-  mdac mdac2(CLK, voice2_signed, env2_out, voice2_amp);
+  mdac12x8 mdac0(CLK, voice0_signed, env0_out, voice0_amp);
+  mdac12x8 mdac1(CLK, voice1_signed, env1_out, voice1_amp);
+  mdac12x8 mdac2(CLK, voice2_signed, env2_out, voice2_amp);
 
   wire signed [15:0] sid_filter_lp;
   wire signed [15:0] sid_filter_bp;
@@ -124,7 +158,7 @@ module sid(input CLK,         // Master clock
     pre_filter,
     WR,
     ADDR,
-    DATA,
+    DATAW,
     sid_filter_lp,
     sid_filter_bp,
     sid_filter_hp
@@ -158,9 +192,27 @@ module sid(input CLK,         // Master clock
       (reg_mode[2] ? sid_filter_hp : 0);
   end
 
+  // master volume stage
+  reg signed [15:0] post_master_vol;
+  mdac16x4 master_vol(
+    CLK,
+    post_filter,
+    reg_volume,
+    post_master_vol);
+
   // SID output
-  // XXX: still do do is the final volume stage
-  assign OUTPUT = post_filter;
+  assign OUTPUT = post_master_vol;
+
+  // handle data reads
+  // note: the real sid returns the last value writen to ANY
+  //       register during a register read.
+  always @(*) begin
+    case (ADDR)
+    'h1b:    DATAR <= voice2_out[11:4];   // osc3 MSB
+    'h1c:    DATAR <= env2_out;           // env3
+    default: DATAR <= 8'h0;               // potx/poty
+    endcase
+  end
 
   // address/data decoder
   reg [2:0] reg_filt;   // voice routing
@@ -170,11 +222,11 @@ module sid(input CLK,         // Master clock
     if (WR) begin
       case (ADDR)
       'h17: begin
-        reg_filt <= DATA[2:0];
+        reg_filt <= DATAW[2:0];
       end
       'h18: begin
-        reg_mode   <= DATA[6:4];
-        reg_volume <= DATA[3:0];
+        reg_mode   <= DATAW[6:4];
+        reg_volume <= DATAW[3:0];
       end
       endcase
     end

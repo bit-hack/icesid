@@ -60,7 +60,7 @@ module filter(
   mult mul(clk, mulA, mulB, mulOut);
 
   initial begin
-    state = 0;
+    state = 7;
     low   = 0;
     high  = 0;
     band  = 0;
@@ -83,6 +83,26 @@ module filter(
 
   // note: quick changes in cutoff can cause the filter to pop, and thus
   //       some form of smoohing should be used to reduce this.
+
+/*
+  // multiplier lookahead
+  always @(*) begin
+    case (state)
+    0: begin
+      mulA <= band;
+      mulB <= resCoef;
+    end
+    1: begin
+      mulA <= high;
+      mulB <= cutCoef;
+    end
+    default:
+      mulA <= band;
+      mulB <= cutCoef;
+    end
+    endcase
+  end
+*/
 
   reg [2:0] state;
   always @(posedge clk) begin
