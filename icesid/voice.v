@@ -38,8 +38,8 @@ module sid_voice(
 
   // initial conditions
   initial begin
-    reg_freq      = 'h4495; // 1Khz
-    reg_pw        = 'h800;  // 50% duty
+    reg_freq      = 0; 
+    reg_pw        = 0; 
     reg_noise     = 0;      // mute noise
     reg_pulse     = 0;      // mute pulse
     reg_saw       = 0;      // mute sawtooth
@@ -49,6 +49,8 @@ module sid_voice(
     reg_sync      = 0;
     noise_clk_lag = 0;
     extmsb_lag    = 0;
+    // accumulator's even bits are high on powerup
+    phase = 24'h555555;
   end
 
   // phase accumulator
@@ -72,7 +74,7 @@ module sid_voice(
 
   initial begin
     // lfsr must be non zero to produce noise
-    lfsr = 1;
+    lfsr = 23'h7ffff8;
   end
 
   // noise generator (23bit LFSR)

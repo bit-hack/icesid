@@ -55,8 +55,17 @@
 00 06 00 90
 
 // Input / Output routing
-00 0a 00 10 // Route I2S_IN to DAC
-00 24 00 27
+00 0a 00 70 // Route I2S_IN to DAP, route DAP to DAC
+
+// DAP EQ
+01 00 00 01 // Enable DAP
+01 08 00 03 // Enable 5 band GEQ
+01 16 00 4f // 9.5dB gain at 115Hz
+01 18 00 3B // 3dB gain at 330Hz
+
+
+00 22 00 00 // 12dB volume boost
+00 24 00 27 // unmute
 00 10 3c 3c // 0dB DAC Volume
 00 0e 02 00 // Enable volume ramp
 
