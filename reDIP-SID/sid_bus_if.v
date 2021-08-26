@@ -153,7 +153,7 @@ module sid_bus_if #(
 	assign bus_addr  = if_a;
 	assign bus_wdata = if_d_i;
 	assign bus_we    = phi2_fall & ~if_r_wn & ~if_csn;
-	assign if_d_oe   = 1'b0; // if_r_wn & ~if_csn & phi2_iob;
+	assign if_d_oe   = if_r_wn & ~if_csn & phi2_iob;
 
 endmodule // sid_bus_if
 

@@ -68,7 +68,7 @@ module sid(
     );
 
   initial begin
-    reg_volume     = 4'hf;   // turn on by default
+    reg_volume     = 4'hf;
     reg_filt       = 0;
     reg_mode       = 0;
     reg_last_write = 0;
@@ -214,6 +214,8 @@ module sid(
   //       register during a register read of write only reg.
   always @(*) begin
     case (ADDR)
+    'h19:    DATAR <= 8'h00;              // potx
+    'h1a:    DATAR <= 8'h00;              // poty
     'h1b:    DATAR <= voice2_out[11:4];   // osc3 MSB
     'h1c:    DATAR <= env2_out;           // env3
     default: DATAR <= reg_last_write;     // potx/poty
@@ -230,9 +232,7 @@ module sid(
       // kee track of the last write for read purposes
       reg_last_write <= DATAW;
       case (ADDR)
-      'h17: begin
-        reg_filt <= DATAW[2:0];
-      end
+      'h17: reg_filt <= DATAW[2:0];
       'h18: begin
         reg_mode   <= DATAW[6:4];
         reg_volume <= DATAW[3:0];
