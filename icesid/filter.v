@@ -45,10 +45,17 @@ module filter(
   assign oBP = band;
   assign oHP = high;
 
-  // note: currently this maps the filter register into a very lineary
-  //       range from 0Hz to 20Khz. This is not accurate and should be
-  //       fed froma lookup table.
-  wire [15:0] cutCoef = reg_freq << 2;
+  reg [15:0] fCurve[2048];
+  initial begin
+    // load in the coefficient table
+    $readmemh("curve_6581.hex", fCurve);
+  end
+
+  // filter coefficient is calculated as follows:
+  //
+  //    coef = 2 * sin( pi * freq / sid_clock_rate ) * 0x10000
+  //
+  reg [15:0] cutCoef;
 
   // note: the resonance coefficient is backwards and increases resonance
   //       as it aproaches zero. this is currently arbitaraly mapped
@@ -68,6 +75,11 @@ module filter(
     band  = 0;
     mulA  = 0;
     mulB  = 0;
+  end
+
+  // find the filter coefficient for the frequency register
+  always @(posedge clk) begin
+    cutCoef <= fCurve[reg_freq];
   end
 
   // note: due to the registering of the multiplier inputs some extra
