@@ -2,10 +2,12 @@
 `timescale 1ns / 1ps
 
 // 16x4 multiplier used for master volume
-module mdac16x4(input CLK,
-                input signed [15:0] VOICE,
-                input [3:0] VOL,
-                output signed [15:0] OUTPUT);
+module mdac16x4(
+    input                CLK,
+    input  signed [15:0] VOICE,
+    input         [ 3:0] VOL,
+    output signed [15:0] OUTPUT
+    );
 
   wire signed [31:0] product;  // 16x16 product
   SB_MAC16 mac(
@@ -28,10 +30,12 @@ module mdac16x4(input CLK,
 endmodule
 
 // 12x8 multiplier used for voice envelopes
-module mdac12x8(input CLK,
-                input signed [11:0] VOICE,
-                input [7:0] ENV,
-                output signed [15:0] OUTPUT);
+module mdac12x8(
+    input                CLK,
+    input  signed [11:0] VOICE,
+    input         [ 7:0] ENV,
+    output signed [15:0] OUTPUT
+    );
 
   wire signed [31:0] product;  // 16x16 product
   SB_MAC16 mac(
@@ -53,18 +57,21 @@ module mdac12x8(input CLK,
   end
 endmodule
 
-module sid(input                CLK,     // Master clock
-           input                CLKen,   // 1Mhz enable
-           input                WR,      // write data to sid addr
-           input         [ 4:0] ADDR,    // sid address
-           input         [ 7:0] DATAW,   // C64 to SID
-           output        [ 7:0] DATAR,   // SID to C64
-           output signed [15:0] OUTPUT);
+module sid(
+    input                CLK,     // Master clock
+    input                CLKen,   // 1Mhz enable
+    input                WR,      // write data to sid addr
+    input         [ 4:0] ADDR,    // sid address
+    input         [ 7:0] DATAW,   // C64 to SID
+    output        [ 7:0] DATAR,   // SID to C64
+    output signed [15:0] OUTPUT
+    );
 
   initial begin
-    reg_volume = 4'hf;   // turn on by default
-    reg_filt   = 0;
-    reg_mode   = 0;
+    reg_volume     = 4'hf;   // turn on by default
+    reg_filt       = 0;
+    reg_mode       = 0;
+    reg_last_write = 0;
   end
 
   // voice 0
@@ -161,8 +168,7 @@ module sid(input                CLK,     // Master clock
     DATAW,
     sid_filter_lp,
     sid_filter_bp,
-    sid_filter_hp
-    );
+    sid_filter_hp);
 
   // pre-filter mixer
   reg signed [15:0] pre_filter;
@@ -205,21 +211,24 @@ module sid(input                CLK,     // Master clock
 
   // handle data reads
   // note: the real sid returns the last value writen to ANY
-  //       register during a register read.
+  //       register during a register read of write only reg.
   always @(*) begin
     case (ADDR)
     'h1b:    DATAR <= voice2_out[11:4];   // osc3 MSB
     'h1c:    DATAR <= env2_out;           // env3
-    default: DATAR <= 8'h0;               // potx/poty
+    default: DATAR <= reg_last_write;     // potx/poty
     endcase
   end
 
   // address/data decoder
-  reg [2:0] reg_filt;   // voice routing
-  reg [2:0] reg_mode;   // filter mode
-  reg [3:0] reg_volume; // master volume
+  reg [2:0] reg_filt;       // voice routing
+  reg [2:0] reg_mode;       // filter mode
+  reg [3:0] reg_volume;     // master volume
+  reg [7:0] reg_last_write; // last writen value
   always @(posedge CLK) begin
     if (WR) begin
+      // kee track of the last write for read purposes
+      reg_last_write <= DATAW;
       case (ADDR)
       'h17: begin
         reg_filt <= DATAW[2:0];

@@ -1,9 +1,12 @@
 `default_nettype none
 
-module mult(input                CLK,
-            input signed  [15:0] iSignal,
-            input         [15:0] iCoef,
-            output signed [15:0] oOut);
+// 16x16 multiplier for the filter
+module mult(
+    input                CLK,
+    input signed  [15:0] iSignal,
+    input         [15:0] iCoef,
+    output signed [15:0] oOut
+    );
 
   wire signed [31:0] product;             // 16x16 product
   assign oOut = product[31:16];
@@ -12,8 +15,7 @@ module mult(input                CLK,
     .A(iSignal),
     .B(iCoef),
     .O(product),
-    .CLK(CLK),
-  );
+    .CLK(CLK));
 
   defparam mac.A_SIGNED = 1'b1;           // input is signed
   defparam mac.B_SIGNED = 1'b0;           // coefficient is unsigned

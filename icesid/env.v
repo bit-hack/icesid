@@ -10,14 +10,16 @@
 // - if GATE goes low at any time it enters the RELEASE phase
 // - in the DEC/REL phase the env is clocked on LFSR5 reset
 // - when envelope hits a threshold, the LFSR5 reset compare value advances
-module sid_env_imp(input        CLK,
-                   input        CLKen,
-                   input        GATE,
-                   input  [3:0] ATT,
-                   input  [3:0] DEC,
-                   input  [3:0] SUS,
-                   input  [3:0] REL,
-                   output [7:0] OUT);
+module sid_env_imp(
+    input        CLK,
+    input        CLKen,
+    input        GATE,
+    input  [3:0] ATT,
+    input  [3:0] DEC,
+    input  [3:0] SUS,
+    input  [3:0] REL,
+    output [7:0] OUT
+    );
 
   reg [ 7:0] env;           // envelope output value
   reg [14:0] lfsr15;        // 15 stage lfsr
@@ -199,13 +201,14 @@ module sid_env_imp(input        CLK,
   end
 endmodule
 
-module sid_env(input CLK,           // master clock
-               input CLKen,         // asserted at 1Mhz
-               input WR,            // data write
-               input [4:0] ADDR,    // address bus
-               input [7:0] DATA,    // data bus
-               output [7:0] OUTPUT
-               );
+module sid_env(
+    input        CLK,       // master clock
+    input        CLKen,     // asserted at 1Mhz
+    input        WR,        // data write
+    input  [4:0] ADDR,      // address bus
+    input  [7:0] DATA,      // data bus
+    output [7:0] OUTPUT
+    );
 
   // register base address
   parameter BASE_ADDR = 0;
@@ -216,14 +219,15 @@ module sid_env(input CLK,           // master clock
   reg [3:0] reg_sus;        // envelope systain
   reg [3:0] reg_rel;        // envelope release
 
-  sid_env_imp impl(.CLK  (CLK),
-                   .CLKen(CLKen),
-                   .GATE (reg_gate),
-                   .ATT  (reg_att),
-                   .DEC  (reg_dec),
-                   .SUS  (reg_sus),
-                   .REL  (reg_rel),
-                   .OUT  (OUTPUT));
+  sid_env_imp impl(
+    .CLK  (CLK),
+    .CLKen(CLKen),
+    .GATE (reg_gate),
+    .ATT  (reg_att),
+    .DEC  (reg_dec),
+    .SUS  (reg_sus),
+    .REL  (reg_rel),
+    .OUT  (OUTPUT));
 
   initial begin
     reg_gate = 0;

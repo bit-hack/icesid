@@ -1,15 +1,16 @@
 `default_nettype none
 `timescale 1ns / 1ps
 
-module sid_voice(input CLK,         // master clock
-                 input CLKen,       // asserted at 1Mhz
-                 input WR,          // data write
-                 input [4:0] ADDR,  // address bus
-                 input [7:0] DATA,  // data bus
-                 input EXTMSB,      // external msb input
-                 output MSBOUT,
-                 output [11:0] OUTPUT
-                 );
+module sid_voice(
+    input         CLK,        // master clock
+    input         CLKen,      // asserted at 1Mhz
+    input         WR,         // data write
+    input   [4:0] ADDR,       // address bus
+    input   [7:0] DATA,       // data bus
+    input         EXTMSB,     // external msb input
+    output        MSBOUT,     // msb out for ringmod and sync
+    output [11:0] OUTPUT      // voice output
+    );
 
   // note: if we capture all the SID waveforms we could put them in a blockram
   //       and play them back via a lookup table. this would require

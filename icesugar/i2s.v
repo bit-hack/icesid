@@ -9,13 +9,13 @@
 //       a stereo effect and should be fixed.
 //
 module i2s_master_t(
-      input CLK,          // 12Mhz input clock
-      input [15:0] SMP,   // input sample data (twos-compliment format)
-      output SCK,
-      output BCK,
-      output DIN,
-      output LCK          // ~48Khz
-      );
+    input         CLK,   // 12Mhz input clock
+    input  [15:0] SMP,   // input sample data (twos-compliment format)
+    output        SCK,
+    output        BCK,
+    output        DIN,
+    output        LCK    // ~48Khz
+    );
 
   reg [ 8:0] counter;
   reg [15:0] shift;
