@@ -3,24 +3,27 @@
 // 16x16 multiplier for the filter
 module mult(
     input                CLK,
-    input signed  [15:0] iSignal,
+    input signed  [16:0] iSignal,
     input         [15:0] iCoef,
     output signed [15:0] oOut
     );
 
-  wire signed [31:0] product;             // 16x16 product
+  wire signed [31:0] product;          // 16x16 product
   assign oOut = product[31:16];
 
+  wire signed [15:0] clipped;
+  clipper clip(iSignal, clipped);
+
   SB_MAC16 mac(
-    .A(iSignal),
+    .A(clipped),
     .B(iCoef),
     .O(product),
     .CLK(CLK));
 
-  defparam mac.A_SIGNED = 1'b1;           // input is signed
-  defparam mac.B_SIGNED = 1'b0;           // coefficient is unsigned
-  defparam mac.TOPOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
-  defparam mac.BOTOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
+  defparam mac.A_SIGNED = 1'b1;             // input is signed
+  defparam mac.B_SIGNED = 1'b0;             // coefficient is unsigned
+  defparam mac.TOPOUTPUT_SELECT = 2'b11;    // Mult16x16 data output
+  defparam mac.BOTOUTPUT_SELECT = 2'b11;    // Mult16x16 data output
 endmodule
 
 module filter(
@@ -37,13 +40,13 @@ module filter(
     output signed [15:0] oHP
     );
 
-  reg signed [15:0] low;
-  reg signed [15:0] high;
-  reg signed [15:0] band;
+  reg signed [16:0] low;
+  reg signed [16:0] high;
+  reg signed [16:0] band;
 
-  assign oLP = low;
-  assign oBP = band;
-  assign oHP = high;
+  clipper oLPClipper(low,  oLP);
+  clipper oBPClipper(band, oBP);
+  clipper oHPClipper(high, oHP);
 
   reg [15:0] fCurve[2048];
   initial begin
@@ -57,29 +60,42 @@ module filter(
   //
   reg [15:0] cutCoef;
 
+  // filter cutoff smothing filter
+  reg [15:0] cutCoefLag0;
+  reg [15:0] cutCoefLag1;
+
   // note: the resonance coefficient is backwards and increases resonance
   //       as it aproaches zero. this is currently arbitaraly mapped
   //       into a useable range but should be tuned in the future.
   wire [15:0] resCoef = 16'hbfff - (reg_res << 11);
 
   // 16x16 multiplier
-  reg  signed [15:0] mulA;
+  reg  signed [16:0] mulA;
   reg         [15:0] mulB;
   wire signed [15:0] mulOut;
   mult mul(clk, mulA, mulB, mulOut);
 
   initial begin
-    state = 7;
-    low   = 0;
-    high  = 0;
-    band  = 0;
-    mulA  = 0;
-    mulB  = 0;
+    state       = 7;
+    low         = 0;
+    high        = 0;
+    band        = 0;
+    mulA        = 0;
+    mulB        = 0;
+    cutCoefLag0 = 0;
+    cutCoefLag1 = 0;
   end
 
   // find the filter coefficient for the frequency register
   always @(posedge clk) begin
     cutCoef <= fCurve[reg_freq];
+
+    // very simple filter to smooth the cutoff control to reduce pops with
+    // fast changes.
+    if (clkEn) begin
+      cutCoefLag0 <= (cutCoefLag0 + cutCoef    ) >> 1;
+      cutCoefLag1 <= (cutCoefLag1 + cutCoefLag0) >> 1;
+    end
   end
 
   // note: due to the registering of the multiplier inputs some extra
@@ -122,7 +138,7 @@ module filter(
   always @(posedge clk) begin
     if (clkEn) begin
       mulA  <= band;
-      mulB  <= cutCoef;
+      mulB  <= cutCoefLag1;
       state <= 0;
     end else begin
       case (state)
@@ -137,7 +153,7 @@ module filter(
       3: begin
         high  <= iIn - low - mulOut;    // in - low - (res * band)
         mulA  <= high;
-        mulB  <= cutCoef;
+        mulB  <= cutCoefLag1;
         state <= 4;
       end
       4: state <= 5;                    // delay - fixme

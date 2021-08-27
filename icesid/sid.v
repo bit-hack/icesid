@@ -173,6 +173,7 @@ module sid(
   // pre-filter mixer
   reg signed [15:0] pre_filter;
   always @(posedge CLK) begin
+    // note: shifts are here to create some headroom
     pre_filter <=
       (reg_filt[0] ? (voice0_amp >>> 3) : 0) +
       (reg_filt[1] ? (voice1_amp >>> 3) : 0) +
@@ -189,7 +190,7 @@ module sid(
   end
 
   // post_filter mixer
-  reg signed [15:0] post_filter;
+  reg signed [16:0] post_filter;
   always @(posedge CLK) begin
     post_filter <=
       bypass +
@@ -198,11 +199,18 @@ module sid(
       (reg_mode[2] ? sid_filter_hp : 0);
   end
 
+  // clip after summing filter and bypass
+  wire signed [15:0] pre_master_vol;
+  clipper post_filter_clip(
+    post_filter,
+    pre_master_vol
+  );
+
   // master volume stage
   reg signed [15:0] post_master_vol;
   mdac16x4 master_vol(
     CLK,
-    post_filter,
+    pre_master_vol,
     reg_volume,
     post_master_vol);
 

@@ -15,7 +15,7 @@
 PROJ = icesid
 BUILD_DIR = build
 SRCS = i2c_state_machine.v i2c_master.v muacm.v sysmgr_hfosc.v  i2s.v sid_bus_if.v top.v
-ICESID_SRCS = sid.v env.v voice.v filter.v
+ICESID_SRCS = sid.v env.v voice.v filter.v clip.v
 ALL_SRCS = $(addprefix reDIP-SID/,$(SRCS)) $(addprefix icesid/,$(ICESID_SRCS))
 SEED = 1337
 PCFFILE = reDIP-SID/redip-sid
