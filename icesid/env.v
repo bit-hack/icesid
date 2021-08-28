@@ -177,10 +177,8 @@ module sid_env_imp(
   always @(posedge CLK) begin
     case ({GATE, dir})
     2'b00: begin                // release
-      if (env != 0) begin
-        if (lfsr5_reset) begin
-          env <= env - 'd1;
-        end
+      if (lfsr5_reset) begin
+        env <= (env == 0) ? 0 : env - 'd1;
       end
     end
     2'b10: begin                // decay
@@ -188,7 +186,13 @@ module sid_env_imp(
         // sustaining, do nothing
       end else begin
         if (lfsr5_reset) begin
-          env <= env - 'd1;
+
+          // note: we used to wrap around here if sustain was increased while we
+          //       were in the sustain phase. Once it wraped around it would
+          //       lock up as env_dec_cmp will go to infinite!  the real sid holds
+          //       at the zero value in this case, so we do the same.
+
+          env <= (env == 0) ? 0 : env - 'd1;
         end
       end
     end
