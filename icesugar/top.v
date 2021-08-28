@@ -116,7 +116,7 @@ module top (
   assign PM3[3] = LRCLK;
 
   // note: shift signal down a bit so its not too loud (~2vac)
-  wire [15:0] VAL = { {3{flt_out[15]}}, flt_out[14:2] };
+  wire signed [15:0] VAL = flt_out;
 
   // instanciate the I2S encoder
   i2s_master_t i2s(
