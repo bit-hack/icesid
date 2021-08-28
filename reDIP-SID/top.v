@@ -56,11 +56,14 @@ module top (
     inout  wire a3,
     inout  wire a4,
     // sid clock
+    //
     inout  wire phi2,
     // sid chip select
     inout  wire cs_n,
     // sid read/write
-    inout  wire rw
+    inout  wire rw,
+    inout wire pot_x,
+    inout wire pot_y
 );
     wire [4:0] bus_addr;
     wire [7:0] bus_wdata;
@@ -99,7 +102,9 @@ module top (
         .ADDR(bus_addr),        // SID address bus
         .DATAW(bus_wdata),      // C64 to SID
         .DATAR(bus_rdata),      // SID to C64
-        .OUTPUT(sid_out)        // SID output
+        .OUTPUT(sid_out),       // SID output
+        .POT_X(pot_x),
+        .POT_Y(pot_y)
     );
 
     // I2S encoder
