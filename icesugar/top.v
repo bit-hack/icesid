@@ -104,7 +104,9 @@ module top (
     .ADDR(bus_addr),         // SID address bus
     .DATAW(bus_wdata),       // C64 to SID
     .DATAR(bus_rdata),       // SID to C64
-    .OUTPUT(sid_out));       // SID output
+    .OUTPUT(sid_out),        // SID output
+    .POT_X(),
+    .POT_Y());
 
   reg SCK;
   reg LRCLK;

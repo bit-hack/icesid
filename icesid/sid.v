@@ -65,8 +65,8 @@ module sid(
     input         [ 7:0] DATAW,   // C64 to SID
     output        [ 7:0] DATAR,   // SID to C64
     output signed [15:0] OUTPUT,
-    inout POT_X,
-    inout POT_Y
+    inout                POT_X,
+    inout                POT_Y
     );
 
   initial begin
