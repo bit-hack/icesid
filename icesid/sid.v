@@ -64,7 +64,9 @@ module sid(
     input         [ 4:0] ADDR,    // sid address
     input         [ 7:0] DATAW,   // C64 to SID
     output        [ 7:0] DATAR,   // SID to C64
-    output signed [15:0] OUTPUT
+    output signed [15:0] OUTPUT,
+    inout POT_X,
+    inout POT_Y
     );
 
   initial begin
@@ -142,6 +144,21 @@ module sid(
     .ADDR(ADDR),
     .DATA(DATAW),
     .OUTPUT(env2_out));
+
+  wire [7:0] potx_out;
+  sid_pot potx(
+    .clk(CLK),
+    .clk_en(CLKen),
+    .pot_val(potx_out),
+    .pot_pad(POT_X));
+
+  wire [7:0] poty_out;
+  sid_pot poty(
+    .clk(CLK),
+    .clk_en(CLKen),
+    .pot_val(poty_out),
+    .pot_pad(POT_Y));
+
 
   // convert to signed format
   wire signed [11:0] voice0_signed = { ~voice0_out[11], voice0_out[10:0] };
@@ -222,8 +239,8 @@ module sid(
   //       register during a register read of write only reg.
   always @(*) begin
     case (ADDR)
-    'h19:    DATAR <= 8'h00;              // potx
-    'h1a:    DATAR <= 8'h00;              // poty
+    'h19:    DATAR <= potx_out;
+    'h1a:    DATAR <= poty_out;
     'h1b:    DATAR <= voice2_out[11:4];   // osc3 MSB
     'h1c:    DATAR <= env2_out;           // env3
     default: DATAR <= reg_last_write;     // potx/poty
