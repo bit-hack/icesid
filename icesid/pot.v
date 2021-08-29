@@ -1,43 +1,80 @@
+`default_nettype none
+
 module sid_pot(
-    input CLK,
-    input CLKen,
-    output [7:0] DATA,
-    inout POT_IO,
+	inout  wire       pot_pad,
+	output reg  [7:0] pot_val,
+	input  wire       clk_en,
+	input  wire       clk
 );
 
-    reg [8:0] phi2_cycle_count;
-    reg [7:0] pot_val;
-    reg oe;
-    wire pot_in;
+	// Signals
+	// -------
 
-    SB_IO #(
-        .PIN_TYPE(6'b1010_01),
-        .PULLUP(1'b0),
-        .IO_STANDARD("SB_LVCMOS")
-    ) pot_io (
-        .PACKAGE_PIN(POT_IO),
-        .OUTPUT_ENABLE(oe),
-        .D_OUT_0(1'b0), // drive to ground
-        .D_IN_1(pot_in)
-    );
+	// IOB control
+	wire       iob_oe;
+	wire       iob_i;
 
-    always @(posedge CLK) begin
-        if (CLKen) begin
-            phi2_cycle_count <= phi2_cycle_count + 1;
-        end
-        if (phi2_cycle_count <= 255) begin
-            // drive to ground for 256 cycles
-            oe <= 1;
-        end else begin
-            // sample how long it takes to rise
-            oe <= 0;
-            if (pot_in) begin
-                pot_val <= phi2_cycle_count[7:0];
-                phi2_cycle_count <= 0;
-            end
-        end
-    end
+	// Cycle timer (1:256 pulses)
+	reg  [8:0] cyc_cnt;
+	wire       cyc_stb;
 
-    assign DATA = pot_val;
+	// Control
+	reg        ctrl_discharging = 1'b0;	// Init for SIM only
+	wire       ctrl_charging;
 
-endmodule
+	// Counting
+	reg  [7:0] cnt;
+
+
+	// IOB
+	// ---
+
+	SB_IO #(
+		.PIN_TYPE    (6'b1101_00),
+		.PULLUP      (1'b0),
+		.IO_STANDARD ("SB_LVCMOS")
+	) pot_iob_I (
+		.PACKAGE_PIN   (pot_pad),
+		.INPUT_CLK     (clk),
+		.OUTPUT_CLK    (clk),
+		.OUTPUT_ENABLE (iob_oe),
+		.D_OUT_0       (1'b0),
+		.D_IN_0        (iob_i)
+	);
+
+
+	// Control
+	// -------
+
+	// Timer
+	always @(posedge clk)
+		if (clk_en)
+			cyc_cnt <= {1'b0, cyc_cnt[7:0]} + 1;
+
+	assign cyc_stb = cyc_cnt[8];
+
+	// State tracking
+	always @(posedge clk)
+		if (clk_en)
+			ctrl_discharging <= ctrl_discharging ^ cyc_stb;
+
+	assign ctrl_charging = ~ctrl_discharging;
+
+	// IO
+	assign iob_oe = ctrl_discharging;
+
+
+	// Counting
+	// --------
+
+	// Count all cycles input is 0 while charging
+	always @(posedge clk)
+		if (clk_en)
+			cnt <= (cnt + {7'd0, ~iob_i}) & {8{ctrl_charging}};
+
+	// Final value register
+	always @(posedge clk)
+		if (clk_en & ctrl_charging & cyc_stb)
+			pot_val <= cnt;
+
+endmodule // sid_pot

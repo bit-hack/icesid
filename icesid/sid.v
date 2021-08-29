@@ -147,17 +147,18 @@ module sid(
 
   wire [7:0] potx_out;
   sid_pot potx(
-    .CLK(CLK),
-    .CLKen(CLKen),
-    .DATA(potx_out),
-    .POT_IO(POT_X));
+    .clk(CLK),
+    .clk_en(CLKen),
+    .pot_val(potx_out),
+    .pot_pad(POT_X));
 
   wire [7:0] poty_out;
   sid_pot poty(
-    .CLK(CLK),
-    .CLKen(CLKen),
-    .DATA(poty_out),
-    .POT_IO(POT_Y));
+    .clk(CLK),
+    .clk_en(CLKen),
+    .pot_val(poty_out),
+    .pot_pad(POT_Y));
+
 
   // convert to signed format
   wire signed [11:0] voice0_signed = { ~voice0_out[11], voice0_out[10:0] };
