@@ -67,10 +67,8 @@ module top (
   wire clk_en;
   sid_clk sid_clk_en(CLK, clk_en);
 
-  // very poor resampling filter
+  // CIC resampling filter
   wire signed [15:0] flt_out;
-//  simple_filter flt(CLK, clk_en, sid_out, flt_out);
-  // a better CIC filter
   cic_filter cicFilter(CLK, clk_en, i2s_sampled, sid_out, flt_out);
 
   // SID

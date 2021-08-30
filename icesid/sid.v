@@ -159,7 +159,6 @@ module sid(
     .pot_val(poty_out),
     .pot_pad(POT_Y));
 
-
   // convert to signed format
   wire signed [11:0] voice0_signed = { ~voice0_out[11], voice0_out[10:0] };
   wire signed [11:0] voice1_signed = { ~voice1_out[11], voice1_out[10:0] };

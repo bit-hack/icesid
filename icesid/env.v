@@ -20,6 +20,8 @@ module sid_env_imp(
   localparam STAGE_REL     = 4;
   reg [2:0] stage;
 
+  wire [7:0] sustain_val = { SUS, SUS };
+
   initial begin
     env     = 0;
     stage   = STAGE_REL;
@@ -104,8 +106,6 @@ module sid_env_imp(
     end
   end
 
-  wire [7:0] sustain_val = { SUS, SUS };
-
   always @(posedge CLK) begin
     case (stage)
     STAGE_ATT: begin
@@ -147,7 +147,6 @@ module sid_env_imp(
       stage <= STAGE_REL;
     endcase
   end
-
 endmodule
 
 module sid_env(
