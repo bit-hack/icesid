@@ -22,29 +22,6 @@ module sid_clk(
   end
 endmodule
 
-// A very crappy filter
-// y(n) = y(n-1) * 7/8 + x(n)
-module simple_filter(
-    input                CLK,
-    input                CLKen,
-    input  signed [15:0] in,
-    output signed [15:0] out
-    );
-
-  reg signed [21:0] accum;
-  assign out = accum[20:5];
-
-  initial begin
-    accum <= 0;
-  end
-
-  always @(posedge CLK) begin
-    if (CLKen) begin
-      accum <= (accum - (accum >>> 3)) + in;
-    end
-  end
-endmodule
-
 module top (
     input        CLK,       // 12Mhz
     output [3:0] PM3,       // I2S BUS
@@ -92,7 +69,9 @@ module top (
 
   // very poor resampling filter
   wire signed [15:0] flt_out;
-  simple_filter flt(CLK, clk_en, sid_out, flt_out);
+//  simple_filter flt(CLK, clk_en, sid_out, flt_out);
+  // a better CIC filter
+  cic_filter cicFilter(CLK, clk_en, i2s_sampled, sid_out, flt_out);
 
   // SID
   wire signed [15:0] sid_out;
@@ -117,8 +96,8 @@ module top (
   assign PM3[2] = DATA;
   assign PM3[3] = LRCLK;
 
-  // note: shift signal down a bit so its not too loud (~2vac)
   wire signed [15:0] VAL = flt_out;
+  wire i2s_sampled;
 
   // instanciate the I2S encoder
   i2s_master_t i2s(
