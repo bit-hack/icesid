@@ -59,9 +59,9 @@
 
 // DAP EQ
 01 00 00 01 // Enable DAP
-01 08 00 03 // Enable 5 band GEQ
-01 16 00 4f // 9.5dB gain at 115Hz
-01 18 00 3B // 3dB gain at 330Hz
+//01 08 00 03 // Enable 5 band GEQ
+//01 16 00 4f // 9.5dB gain at 115Hz
+//01 18 00 3B // 3dB gain at 330Hz
 
 
 00 22 00 00 // 12dB volume boost
