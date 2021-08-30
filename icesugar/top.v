@@ -104,6 +104,7 @@ module top (
     .SCK(SCK),
     .BCK(BCLK),
     .DIN(DATA),
-    .LCK(LRCLK));
+    .LCK(LRCLK),
+    .SAMPLED(i2s_sampled));
 
 endmodule
