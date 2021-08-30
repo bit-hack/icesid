@@ -25,7 +25,8 @@ endmodule
 module top (
     input        CLK,       // 12Mhz
     output [3:0] PM3,       // I2S BUS
-    input  [2:0] PM4        // SPI BUS
+    input  [2:0] PM4,       // SPI BUS
+    output [7:0] PM2
 );
 
   // SPI slave
@@ -76,6 +77,32 @@ module top (
   // SID
   wire signed [15:0] sid_out;
   wire [7:0] bus_rdata;
+
+
+  // D     0  1  2  3  4  5  6  7
+  // PORT 45 43 38 36 46 44 42 37
+  // PM2   7  6  5  4  0  1  2  3
+
+  assign PM2[7] = sidEnv0 < pwm_cnt;
+  assign PM2[6] = ~gate[0];
+  assign PM2[5] = 1;
+  assign PM2[4] = sidEnv1 < pwm_cnt;
+  assign PM2[0] = ~gate[1];
+  assign PM2[1] = 1;
+  assign PM2[2] = sidEnv2 < pwm_cnt;
+  assign PM2[3] = ~gate[2];
+
+  reg [7:0] pwm_cnt;
+  always @(posedge CLK) begin
+    if (clk_en) begin
+      pwm_cnt <= pwm_cnt + 1;
+    end
+  end
+
+  wire [7:0] sidEnv0;
+  wire [7:0] sidEnv1;
+  wire [7:0] sidEnv2;
+
   sid the_sid(
     .CLK(CLK),               // Master clock
     .CLKen(clk_en),          // 1Mhz enable
@@ -85,7 +112,10 @@ module top (
     .DATAR(bus_rdata),       // SID to C64
     .OUTPUT(sid_out),        // SID output
     .POT_X(),
-    .POT_Y());
+    .POT_Y(),
+    .ENV0(sidEnv0),
+    .ENV1(sidEnv1),
+    .ENV2(sidEnv2));
 
   reg SCK;
   reg LRCLK;
@@ -106,6 +136,22 @@ module top (
     .SCK(SCK),
     .BCK(BCLK),
     .DIN(DATA),
-    .LCK(LRCLK));
+    .LCK(LRCLK),
+    .SAMPLED(i2s_sampled));
+
+  reg [2:0] gate;
+  initial begin
+    gate <= 3'd0;
+  end
+
+  always @(posedge CLK) begin
+    if (bus_we) begin
+      case (bus_addr)
+      'h04: gate[0] <= bus_wdata[0];
+      'h0b: gate[1] <= bus_wdata[0];
+      'h12: gate[2] <= bus_wdata[0];
+      endcase
+    end
+  end
 
 endmodule

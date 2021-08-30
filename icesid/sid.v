@@ -66,7 +66,10 @@ module sid(
     output        [ 7:0] DATAR,   // SID to C64
     output signed [15:0] OUTPUT,
     inout                POT_X,
-    inout                POT_Y
+    inout                POT_Y,
+    output        [7:0]  ENV0,
+    output        [7:0]  ENV1,
+    output        [7:0]  ENV2
     );
 
   initial begin
@@ -159,6 +162,10 @@ module sid(
     .pot_val(poty_out),
     .pot_pad(POT_Y));
 
+  // for debugging assign envelop outputs
+  assign ENV0 = env0_out;
+  assign ENV1 = env1_out;
+  assign ENV2 = env2_out;
 
   // convert to signed format
   wire signed [11:0] voice0_signed = { ~voice0_out[11], voice0_out[10:0] };

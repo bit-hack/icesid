@@ -29,14 +29,14 @@ set_io CLK 35
 #set_io PM1[7] 9
 
 # PMOD 2
-#set_io PM2[0] 46
-#set_io PM2[1] 44
-#set_io PM2[2] 42
-#set_io PM2[3] 37
-#set_io PM2[4] 36 
-#set_io PM2[5] 38
-#set_io PM2[6] 43
-#set_io PM2[7] 45
+set_io PM2[0] 46
+set_io PM2[1] 44
+set_io PM2[2] 42
+set_io PM2[3] 37
+set_io PM2[4] 36 
+set_io PM2[5] 38
+set_io PM2[6] 43
+set_io PM2[7] 45
 
 # PMOD 3
 set_io PM3[0] 34 
