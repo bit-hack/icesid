@@ -2,29 +2,6 @@
 
 //`define NO_MUACM
 
-// A very crappy filter
-// y(n) = y(n-1) * 7/8 + x(n)
-module simple_filter(
-    input                CLK,
-    input                CLKen,
-    input  signed [15:0] in,
-    output signed [15:0] out,
-    );
-
-  reg signed [21:0] accum;
-  assign out = accum[20:5];
-
-  initial begin
-    accum <= 0;
-  end
-
-  always @(posedge CLK) begin
-    if (CLKen) begin
-      accum <= (accum - (accum >>> 3)) + in;
-    end
-  end
-endmodule
-
 module top (
     // I2S
     output wire i2s_din,
@@ -90,8 +67,9 @@ module top (
         .rst(rst)
     );
 
+    // downsampling filter
     wire signed [15:0] flt_out;
-    simple_filter flt(sys_clk, clk_en, sid_out, flt_out);
+    cic_filter flt(sys_clk, clk_en, i2s_sampled, sid_out, flt_out);
 
     // SID
     wire signed [15:0] sid_out;

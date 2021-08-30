@@ -15,7 +15,7 @@
 PROJ = icesid
 BUILD_DIR = build
 SRCS = i2s.v spi.v top.v
-ICESID_SRCS = sid.v env.v voice.v filter.v clip.v pot.v
+ICESID_SRCS = sid.v env.v voice.v filter.v clip.v pot.v cic.v
 ALL_SRCS = $(addprefix icesugar/,$(SRCS)) $(addprefix icesid/,$(ICESID_SRCS))
 SEED = 1337
 PCFFILE = icesugar/icesugar
