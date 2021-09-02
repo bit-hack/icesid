@@ -1,16 +1,15 @@
-`default_nettype none
-`timescale 1ns / 1ps
+`default_nettype none `timescale 1ns / 1ps
 
-module sid_voice(
-    input         CLK,        // master clock
-    input         CLKen,      // asserted at 1Mhz
-    input         WR,         // data write
-    input   [4:0] ADDR,       // address bus
-    input   [7:0] DATA,       // data bus
-    input         EXTMSB,     // external msb input
-    output        MSBOUT,     // msb out for ringmod and sync
-    output [11:0] OUTPUT      // voice output
-    );
+module sid_voice (
+    input         clk,      // master clock
+    input         clkEn,    // asserted at 1Mhz
+    input         iWE,      // data write
+    input  [ 4:0] iAddr,    // address bus
+    input  [ 7:0] iData,    // data bus
+    input         iExtMSB,  // external msb input
+    output        oMSB,     // msb out for ringmod and sync
+    output [11:0] oOut      // voice output
+);
 
   // note: if we capture all the SID waveforms we could put them in a blockram
   //       and play them back via a lookup table. this would require
@@ -20,55 +19,55 @@ module sid_voice(
   //       on the ice40up5k device however.
 
   // tap from the phase acumulator to clock the noise LFSR
-  localparam noise_clk_bit = 19;
+  localparam noiseClkBit = 19;
 
   // register base address
   parameter BASE_ADDR = 0;
 
   // voice related internal registers
-  reg [15:0] reg_freq;      // frequency
-  reg [11:0] reg_pw;        // pulse width
-  reg reg_noise;            // wave-select noise enable
-  reg reg_pulse;            // wave-select pulse enable
-  reg reg_saw;              // wave-select saw enable
-  reg reg_tri;              // wave-select triangle enable
-  reg reg_test;             // test register
-  reg reg_ringmod;          // ring modulate
-  reg reg_sync;             // oscillator sync
+  reg [15:0] regFreq;  // frequency
+  reg [11:0] regPW;  // pulse width
+  reg        regNoise;  // wave-select noise enable
+  reg        regPulse;  // wave-select pulse enable
+  reg        regSaw;  // wave-select saw enable
+  reg        regTri;  // wave-select triangle enable
+  reg        regTest;  // test register
+  reg        regRingMod;  // ring modulate
+  reg        regSync;  // oscillator sync
 
   // initial conditions
   initial begin
-    reg_freq      = 0; 
-    reg_pw        = 0; 
-    reg_noise     = 0;      // mute noise
-    reg_pulse     = 0;      // mute pulse
-    reg_saw       = 0;      // mute sawtooth
-    reg_tri       = 0;      // mute triangle
-    reg_test      = 0;
-    reg_ringmod   = 0;
-    reg_sync      = 0;
-    noise_clk_lag = 0;
-    extmsb_lag    = 0;
+    regFreq     = 0;
+    regPW       = 0;
+    regNoise    = 0;  // mute noise
+    regPulse    = 0;  // mute pulse
+    regSaw      = 0;  // mute sawtooth
+    regTri      = 0;  // mute triangle
+    regTest     = 0;
+    regRingMod  = 0;
+    regSync     = 0;
+    noiseClkLag = 0;
+    extMSBLag   = 0;
     // accumulator's even bits are high on powerup
-    phase = 24'h555555;
+    phase       = 24'h555555;
   end
 
   // phase accumulator
   // the oscillator frequency can be calculated as:
   //   Freq = (Mclk * reg_freq) / (16777215)
-  assign MSBOUT = phase[23];
-  reg extmsb_lag;
+  assign oMSB = phase[23];
+  reg extMSBLag;
   reg [23:0] phase;
-  reg noise_clk_lag;
-  always @(posedge CLK) begin
-    if (CLKen) begin
-      if (reg_sync && !EXTMSB && extmsb_lag) begin
+  reg noiseClkLag;
+  always @(posedge clk) begin
+    if (clkEn) begin
+      if (regSync && !iExtMSB && extMSBLag) begin
         phase <= 0;
       end else begin
-        phase <= phase + { 8'd0, reg_freq };
+        phase <= phase + {8'd0, regFreq};
       end
-      noise_clk_lag <= phase[noise_clk_bit];
-      extmsb_lag <= EXTMSB;
+      noiseClkLag <= phase[noiseClkBit];
+      extMSBLag   <= iExtMSB;
     end
   end
 
@@ -81,60 +80,68 @@ module sid_voice(
   // todo: pass in the test bit
   // todo: noise lockup
   reg [22:0] lfsr;
-  always @(posedge CLK) begin
-    if (CLKen) begin
+  always @(posedge clk) begin
+    if (clkEn) begin
       // update noise when bit 19 goes high
-      if (phase[noise_clk_bit] && !noise_clk_lag) begin
-        lfsr <= { lfsr[21:0], lfsr[22] ^ lfsr[21] };
+      if (phase[noiseClkBit] && !noiseClkLag) begin
+        lfsr <= {lfsr[21:0], lfsr[22] ^ lfsr[21]};
       end
     end
   end
 
   // waveform generators
   // note: at this stage all waveforms are unsigned with center point at 'h800
-  reg [11:0] wav_saw;
-  reg [11:0] wav_pulse;
-  reg [11:0] wav_tri;
-  reg [11:0] wav_noise;
-  always @(posedge CLK) begin
-    wav_saw   <=  phase[23:12];
-    wav_pulse <= (phase[23:12] >= reg_pw) ? 12'h000 : 12'hfff;
-    wav_tri   <= ((phase[23] ^ (reg_ringmod & EXTMSB)) ? phase[22:11] : ~phase[22:11]);
-    wav_noise <= { lfsr[20], lfsr[18], lfsr[14], lfsr[11], lfsr[9], lfsr[5], lfsr[2], lfsr[0], 4'b0 };
+  reg [11:0] wavSaw;
+  reg [11:0] wavPulse;
+  reg [11:0] wavTri;
+  reg [11:0] wavNoise;
+  always @(posedge clk) begin
+    wavSaw   <= phase[23:12];
+    wavPulse <= (phase[23:12] >= regPW) ? 12'h000 : 12'hfff;
+    wavTri   <= ((phase[23] ^ (regRingMod & iExtMSB)) ? phase[22:11] : ~phase[22:11]);
+    wavNoise <= {lfsr[20], lfsr[18], lfsr[14], lfsr[11], lfsr[9], lfsr[5], lfsr[2], lfsr[0], 4'b0};
   end
 
   // waveform mixer
   // todo: the data sheet says the waveforms are "ANDed" together but that is
   //       not what happens. its much more complex than that, but for now lets
   //       do this and revise it later.
-  reg [11:0] wav_mix;
+  reg [11:0] wavMix;
 
   // note: we invert here so that when all channels are off a zero is produced.
-  assign OUTPUT = ~wav_mix;
-  always @(posedge CLK) begin
-    wav_mix <= (reg_saw   ? wav_saw   : 12'hfff) &
-               (reg_pulse ? wav_pulse : 12'hfff) &
-               (reg_tri   ? wav_tri   : 12'hfff) &
-               (reg_noise ? wav_noise : 12'hfff);
+  assign oOut = ~wavMix;
+  always @(posedge clk) begin
+    wavMix <= (regSaw   ? wavSaw   : 12'hfff) &
+               (regPulse ? wavPulse : 12'hfff) &
+               (regTri   ? wavTri   : 12'hfff) &
+               (regNoise ? wavNoise : 12'hfff);
   end
 
   // address/data decoder
-  always @(posedge CLK) begin
-    if (WR) begin
-      case (ADDR)
-      (BASE_ADDR+'h0): begin reg_freq <= { reg_freq[15:8], DATA[7:0] }; end
-      (BASE_ADDR+'h1): begin reg_freq <= { DATA[7:0], reg_freq[7:0] };  end
-      (BASE_ADDR+'h2): begin reg_pw   <= { reg_pw[11:8], DATA[7:0] };   end
-      (BASE_ADDR+'h3): begin reg_pw   <= { DATA[3:0], reg_pw[7:0] };    end
-      (BASE_ADDR+'h4): begin
-          reg_noise   <= DATA[7];
-          reg_pulse   <= DATA[6];
-          reg_saw     <= DATA[5];
-          reg_tri     <= DATA[4];
-          reg_test    <= DATA[3];
-          reg_ringmod <= DATA[2];
-          reg_sync    <= DATA[1];
-      end
+  always @(posedge clk) begin
+    if (iWE) begin
+      case (iAddr)
+        (BASE_ADDR + 'h0): begin
+          regFreq <= {regFreq[15:8], iData[7:0]};
+        end
+        (BASE_ADDR + 'h1): begin
+          regFreq <= {iData[7:0], regFreq[7:0]};
+        end
+        (BASE_ADDR + 'h2): begin
+          regPW <= {regPW[11:8], iData[7:0]};
+        end
+        (BASE_ADDR + 'h3): begin
+          regPW <= {iData[3:0], regPW[7:0]};
+        end
+        (BASE_ADDR + 'h4): begin
+          regNoise   <= iData[7];
+          regPulse   <= iData[6];
+          regSaw     <= iData[5];
+          regTri     <= iData[4];
+          regTest    <= iData[3];
+          regRingMod <= iData[2];
+          regSync    <= iData[1];
+        end
       endcase
     end
   end

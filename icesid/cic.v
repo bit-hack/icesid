@@ -1,11 +1,11 @@
 `default_nettype none
 
-module cic_filter(
-  input                CLK,
-  input                CLKen_in,
-  input                CLKen_out,
-  input  signed [15:0] SMPin,
-  output signed [15:0] SMPout
+module cic_filter (
+    input                clk,     // system clock
+    input                clkEnA,  // input sample rate
+    input                clkEnB,  // output sample rate
+    input  signed [15:0] iIn,     // input sample
+    output signed [15:0] oOut     // filtered sample
 );
 
   // D             = 1000000 / ~44100   = ~23
@@ -13,9 +13,9 @@ module cic_filter(
 
   reg signed [21:0] inAcc;
   reg signed [21:0] outLag;
-  reg signed [21:0] out;
 
-  assign SMPout = out[21:6];
+  reg signed [21:0] out;
+  assign oOut = out[21:6];
 
   initial begin
     inAcc  <= 0;
@@ -23,14 +23,16 @@ module cic_filter(
     out    <= 0;
   end
 
-  always @(posedge CLK) begin
-    if (CLKen_in) begin
-      inAcc <= inAcc + SMPin;
+  // integration stage
+  always @(posedge clk) begin
+    if (clkEnA) begin
+      inAcc <= inAcc + iIn;
     end
   end
 
-  always @(posedge CLK) begin
-    if (CLKen_out) begin
+  // comb stage
+  always @(posedge clk) begin
+    if (clkEnB) begin
       out    <= inAcc - outLag;
       outLag <= inAcc;
     end

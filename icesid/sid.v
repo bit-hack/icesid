@@ -1,266 +1,303 @@
-`default_nettype none
-`timescale 1ns / 1ps
+`default_nettype none `timescale 1ns / 1ps
 
 // 16x4 multiplier used for master volume
-module mdac16x4(
-    input                CLK,
-    input  signed [15:0] VOICE,
-    input         [ 3:0] VOL,
-    output signed [15:0] OUTPUT
-    );
+module mdac16x4 (
+    input                clk,
+    input  signed [15:0] iVoice,
+    input         [ 3:0] iVol,
+    output signed [15:0] oOut
+);
 
   wire signed [31:0] product;  // 16x16 product
-  SB_MAC16 mac(
-    .A(VOICE),
-    .B({12'b0, VOL}),
-    .O(product),
-    .CLK(CLK),
+  SB_MAC16 mac (
+      .A  (iVoice),
+      .B  ({12'b0, iVol}),
+      .O  (product),
+      .CLK(clk),
   );
 
-  defparam mac.A_SIGNED = 1'b1;           // voice is signed
-  defparam mac.B_SIGNED = 1'b0;           // env is unsigned
+  defparam mac.A_SIGNED = 1'b1;  // voice is signed
+  defparam mac.B_SIGNED = 1'b0;  // env is unsigned
   defparam mac.TOPOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
   defparam mac.BOTOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
 
   reg [15:0] out;
-  assign OUTPUT = out;
-  always @(posedge CLK) begin
+  assign oOut = out;
+  always @(posedge clk) begin
     out <= product[19:4];
   end
 endmodule
 
 // 12x8 multiplier used for voice envelopes
-module mdac12x8(
-    input                CLK,
-    input  signed [11:0] VOICE,
-    input         [ 7:0] ENV,
-    output signed [15:0] OUTPUT
-    );
+module mdac12x8 (
+    input                clk,
+    input  signed [11:0] iVoice,
+    input         [ 7:0] iEnv,
+    output signed [15:0] oOut
+);
 
   wire signed [31:0] product;  // 16x16 product
-  SB_MAC16 mac(
-    .A({VOICE, 4'b0}),
-    .B({8'b0, ENV}),
-    .O(product),
-    .CLK(CLK),
+  SB_MAC16 mac (
+      .A  ({iVoice, 4'b0}),
+      .B  ({8'b0, iEnv}),
+      .O  (product),
+      .CLK(clk),
   );
 
-  defparam mac.A_SIGNED = 1'b1;           // voice is signed
-  defparam mac.B_SIGNED = 1'b0;           // env is unsigned
+  defparam mac.A_SIGNED = 1'b1;  // voice is signed
+  defparam mac.B_SIGNED = 1'b0;  // env is unsigned
   defparam mac.TOPOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
   defparam mac.BOTOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
 
   reg [15:0] out;
-  assign OUTPUT = out;
-  always @(posedge CLK) begin
+  assign oOut = out;
+  always @(posedge clk) begin
     out <= product[23:8];
   end
 endmodule
 
-module sid(
-    input                CLK,     // Master clock
-    input                CLKen,   // 1Mhz enable
-    input                WR,      // write data to sid addr
-    input         [ 4:0] ADDR,    // sid address
-    input         [ 7:0] DATAW,   // C64 to SID
-    output        [ 7:0] DATAR,   // SID to C64
-    output signed [15:0] OUTPUT,
-    inout                POT_X,
-    inout                POT_Y
-    );
+module sid (
+    input                clk,     // Master clock
+    input                clkEn,   // 1Mhz enable
+    input                iWE,     // write enable
+    input         [ 4:0] iAddr,   // sid address
+    input         [ 7:0] iDataW,  // C64 to SID
+    output        [ 7:0] oDataR,  // SID to C64
+    output signed [15:0] oOut,    // sid output
+    inout                ioPotX,  // pot x pad
+    inout                ioPotY   // pot y pad
+);
 
   initial begin
-    reg_volume     = 4'hf;
-    reg_filt       = 0;
-    reg_mode       = 0;
-    reg_last_write = 0;
+    regVolume    = 4'hf;
+    regFilt      = 0;
+    regMode      = 0;
+    regLastWrite = 0;
   end
 
   // voice 0
   wire msb0;
-  wire [11:0] voice0_out;
-  sid_voice #(.BASE_ADDR('h0)) voice0(
-    .CLK(CLK),
-    .CLKen(CLKen),
-    .WR(WR),
-    .ADDR(ADDR),
-    .DATA(DATAW),
-    .EXTMSB(msb2),
-    .MSBOUT(msb0),
-    .OUTPUT(voice0_out));
+  wire [11:0] voiceOut0;
+  sid_voice #(
+      .BASE_ADDR('h0)
+  ) voice0 (
+      .clk(clk),
+      .clkEn(clkEn),
+      .iWE(iWE),
+      .iAddr(iAddr),
+      .iData(iDataW),
+      .iExtMSB(msb2),
+      .oMSB(msb0),
+      .oOut(voiceOut0)
+  );
 
   // voice 1
   wire msb1;
-  wire [11:0] voice1_out;
-  sid_voice #(.BASE_ADDR('h7)) voice1(
-    .CLK(CLK),
-    .CLKen(CLKen),
-    .WR(WR),
-    .ADDR(ADDR),
-    .DATA(DATAW),
-    .EXTMSB(msb0),
-    .MSBOUT(msb1),
-    .OUTPUT(voice1_out));
+  wire [11:0] voiceOut1;
+  sid_voice #(
+      .BASE_ADDR('h7)
+  ) voice1 (
+      .clk(clk),
+      .clkEn(clkEn),
+      .iWE(iWE),
+      .iAddr(iAddr),
+      .iData(iDataW),
+      .iExtMSB(msb0),
+      .oMSB(msb1),
+      .oOut(voiceOut1)
+  );
 
   // voice 2
   wire msb2;
-  wire [11:0] voice2_out;
-  sid_voice #(.BASE_ADDR('he)) voice2(
-    .CLK(CLK),
-    .CLKen(CLKen),
-    .WR(WR),
-    .ADDR(ADDR),
-    .DATA(DATAW),
-    .EXTMSB(msb1),
-    .MSBOUT(msb2),
-    .OUTPUT(voice2_out));
+  wire [11:0] voiceOut2;
+  sid_voice #(
+      .BASE_ADDR('he)
+  ) voice2 (
+      .clk(clk),
+      .clkEn(clkEn),
+      .iWE(iWE),
+      .iAddr(iAddr),
+      .iData(iDataW),
+      .iExtMSB(msb1),
+      .oMSB(msb2),
+      .oOut(voiceOut2)
+  );
 
   // envelope 0
-  wire [7:0] env0_out;
-  sid_env #(.BASE_ADDR('h0)) env0(
-    .CLK(CLK),
-    .CLKen(CLKen),
-    .WR(WR),
-    .ADDR(ADDR),
-    .DATA(DATAW),
-    .OUTPUT(env0_out));
+  wire [7:0] envOut0;
+  sid_env #(
+      .BASE_ADDR('h0)
+  ) env0 (
+      .clk  (clk),
+      .clkEn(clkEn),
+      .iWE  (iWE),
+      .iAddr(iAddr),
+      .iData(iDataW),
+      .oOut (envOut0)
+  );
 
   // envelope 1
-  wire [7:0] env1_out;
-  sid_env #(.BASE_ADDR('h7)) env1(
-    .CLK(CLK),
-    .CLKen(CLKen),
-    .WR(WR),
-    .ADDR(ADDR),
-    .DATA(DATAW),
-    .OUTPUT(env1_out));
+  wire [7:0] envOut1;
+  sid_env #(
+      .BASE_ADDR('h7)
+  ) env1 (
+      .clk  (clk),
+      .clkEn(clkEn),
+      .iWE  (iWE),
+      .iAddr(iAddr),
+      .iData(iDataW),
+      .oOut (envOut1)
+  );
 
   // envelope 2
-  wire [7:0] env2_out;
-  sid_env #(.BASE_ADDR('he)) env2(
-    .CLK(CLK),
-    .CLKen(CLKen),
-    .WR(WR),
-    .ADDR(ADDR),
-    .DATA(DATAW),
-    .OUTPUT(env2_out));
+  wire [7:0] envOut2;
+  sid_env #(
+      .BASE_ADDR('he)
+  ) env2 (
+      .clk  (clk),
+      .clkEn(clkEn),
+      .iWE  (iWE),
+      .iAddr(iAddr),
+      .iData(iDataW),
+      .oOut (envOut2)
+  );
 
-  wire [7:0] potx_out;
-  sid_pot potx(
-    .clk(CLK),
-    .clk_en(CLKen),
-    .pot_val(potx_out),
-    .pot_pad(POT_X));
+  wire [7:0] potX;
+  sid_pot potx (
+      .clk(clk),
+      .clk_en(clkEn),
+      .pot_val(potX),
+      .pot_pad(ioPotX)
+  );
 
-  wire [7:0] poty_out;
-  sid_pot poty(
-    .clk(CLK),
-    .clk_en(CLKen),
-    .pot_val(poty_out),
-    .pot_pad(POT_Y));
+  wire [7:0] potY;
+  sid_pot poty (
+      .clk(clk),
+      .clk_en(clkEn),
+      .pot_val(potY),
+      .pot_pad(ioPotY)
+  );
 
   // convert to signed format
-  wire signed [11:0] voice0_signed = { ~voice0_out[11], voice0_out[10:0] };
-  wire signed [11:0] voice1_signed = { ~voice1_out[11], voice1_out[10:0] };
-  wire signed [11:0] voice2_signed = { ~voice2_out[11], voice2_out[10:0] };
+  wire signed [11:0] voiceSigned0 = {~voiceOut0[11], voiceOut0[10:0]};
+  wire signed [11:0] voiceSigned1 = {~voiceOut1[11], voiceOut1[10:0]};
+  wire signed [11:0] voiceSigned2 = {~voiceOut2[11], voiceOut2[10:0]};
 
   // simulate multiplying dac (12bit-signed * 8bit-unsigned)
-  reg signed [15:0] voice0_amp;
-  reg signed [15:0] voice1_amp;
-  reg signed [15:0] voice2_amp;
-  mdac12x8 mdac0(CLK, voice0_signed, env0_out, voice0_amp);
-  mdac12x8 mdac1(CLK, voice1_signed, env1_out, voice1_amp);
-  mdac12x8 mdac2(CLK, voice2_signed, env2_out, voice2_amp);
-
-  wire signed [15:0] sid_filter_lp;
-  wire signed [15:0] sid_filter_bp;
-  wire signed [15:0] sid_filter_hp;
-  filter sid_filter(
-    CLK,
-    CLKen,
-    pre_filter,
-    WR,
-    ADDR,
-    DATAW,
-    sid_filter_lp,
-    sid_filter_bp,
-    sid_filter_hp);
+  reg signed [15:0] voiceAmp0;
+  reg signed [15:0] voiceAmp1;
+  reg signed [15:0] voiceAmp2;
+  mdac12x8 mdac0 (
+      clk,
+      voiceSigned0,
+      envOut0,
+      voiceAmp0
+  );
+  mdac12x8 mdac1 (
+      clk,
+      voiceSigned1,
+      envOut1,
+      voiceAmp1
+  );
+  mdac12x8 mdac2 (
+      clk,
+      voiceSigned2,
+      envOut2,
+      voiceAmp2
+  );
 
   // pre-filter mixer
-  reg signed [15:0] pre_filter;
-  always @(posedge CLK) begin
+  reg signed [15:0] preFilter;
+  always @(posedge clk) begin
     // note: shifts are here to create some headroom
-    pre_filter <=
-      (reg_filt[0] ? (voice0_amp >>> 3) : 0) +
-      (reg_filt[1] ? (voice1_amp >>> 3) : 0) +
-      (reg_filt[2] ? (voice2_amp >>> 3) : 0);
+    preFilter <=
+      (regFilt[0] ? (voiceAmp0 >>> 3) : 0) +
+      (regFilt[1] ? (voiceAmp1 >>> 3) : 0) +
+      (regFilt[2] ? (voiceAmp2 >>> 3) : 0);
   end
 
   // filter bypass mixer
   reg signed [15:0] bypass;
-  always @(posedge CLK) begin
+  always @(posedge clk) begin
     bypass <=
-      (reg_filt[0] ? 0 : (voice0_amp >>> 3)) +
-      (reg_filt[1] ? 0 : (voice1_amp >>> 3)) +
-      (reg_filt[2] ? 0 : (voice2_amp >>> 3));
+      (regFilt[0] ? 0 : (voiceAmp0 >>> 3)) +
+      (regFilt[1] ? 0 : (voiceAmp1 >>> 3)) +
+      (regFilt[2] ? 0 : (voiceAmp2 >>> 3));
   end
 
-  // post_filter mixer
-  reg signed [16:0] post_filter;
-  always @(posedge CLK) begin
-    post_filter <=
+  // SID filter
+  wire signed [15:0] sidFilterLP;
+  wire signed [15:0] sidFilterBP;
+  wire signed [15:0] sidFilterHP;
+  filter sid_filter (
+      clk,
+      clkEn,
+      preFilter,
+      iWE,
+      iAddr,
+      iDataW,
+      sidFilterLP,
+      sidFilterBP,
+      sidFilterHP
+  );
+
+  // post-filter mixer
+  reg signed [16:0] postFilter;
+  always @(posedge clk) begin
+    postFilter <=
       bypass +
-      (reg_mode[0] ? sid_filter_lp : 0) +
-      (reg_mode[1] ? sid_filter_bp : 0) +
-      (reg_mode[2] ? sid_filter_hp : 0);
+      (regMode[0] ? sidFilterLP : 0) +
+      (regMode[1] ? sidFilterBP : 0) +
+      (regMode[2] ? sidFilterHP : 0);
   end
 
   // clip after summing filter and bypass
-  wire signed [15:0] pre_master_vol;
-  clipper post_filter_clip(
-    post_filter,
-    pre_master_vol
+  wire signed [15:0] preMasterVol;
+  clipper post_filter_clip (
+      postFilter,
+      preMasterVol
   );
 
   // master volume stage
-  reg signed [15:0] post_master_vol;
-  mdac16x4 master_vol(
-    CLK,
-    pre_master_vol,
-    reg_volume,
-    post_master_vol);
+  reg signed [15:0] postMasterVol;
+  mdac16x4 master_vol (
+      clk,
+      preMasterVol,
+      regVolume,
+      postMasterVol
+  );
 
   // SID output
-  assign OUTPUT = post_master_vol;
+  assign oOut = postMasterVol;
 
   // handle data reads
   // note: the real sid returns the last value writen to ANY
   //       register during a register read of write only reg.
   always @(*) begin
-    case (ADDR)
-    'h19:    DATAR <= potx_out;
-    'h1a:    DATAR <= poty_out;
-    'h1b:    DATAR <= voice2_out[11:4];   // osc3 MSB
-    'h1c:    DATAR <= env2_out;           // env3
-    default: DATAR <= reg_last_write;     // potx/poty
+    case (iAddr)
+      'h19:    oDataR <= potX;
+      'h1a:    oDataR <= potY;
+      'h1b:    oDataR <= voiceOut2[11:4];  // osc3 MSB
+      'h1c:    oDataR <= envOut2;  // env3
+      default: oDataR <= regLastWrite;  // potx/poty
     endcase
   end
 
   // address/data decoder
-  reg [2:0] reg_filt;       // voice routing
-  reg [2:0] reg_mode;       // filter mode
-  reg [3:0] reg_volume;     // master volume
-  reg [7:0] reg_last_write; // last writen value
-  always @(posedge CLK) begin
-    if (WR) begin
+  reg [2:0] regFilt;  // voice routing
+  reg [2:0] regMode;  // filter mode
+  reg [3:0] regVolume;  // master volume
+  reg [7:0] regLastWrite;  // last writen value
+  always @(posedge clk) begin
+    if (iWE) begin
       // kee track of the last write for read purposes
-      reg_last_write <= DATAW;
-      case (ADDR)
-      'h17: reg_filt <= DATAW[2:0];
-      'h18: begin
-        reg_mode   <= DATAW[6:4];
-        reg_volume <= DATAW[3:0];
-      end
+      regLastWrite <= iDataW;
+      case (iAddr)
+        'h17: regFilt <= iDataW[2:0];
+        'h18: begin
+          regMode   <= iDataW[6:4];
+          regVolume <= iDataW[3:0];
+        end
       endcase
     end
   end

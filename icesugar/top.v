@@ -1,20 +1,20 @@
 `default_nettype none
 
 // 12Mhz to 1Mhz clock enable generator
-module sid_clk(
-    input  CLK,
-    output CLKen
-    );
+module sid_clk (
+    input  clk,
+    output clkEn
+);
 
   reg [4:0] counter;
-  wire CLKen = (counter == 0);
+  wire clkEn = (counter == 0);
 
   initial begin
     counter <= 0;
   end
 
-  always @(posedge CLK) begin
-    if (CLKen) begin
+  always @(posedge clk) begin
+    if (clkEn) begin
       counter <= 5'd11;
     end else begin
       counter <= counter - 5'd1;
@@ -23,21 +23,22 @@ module sid_clk(
 endmodule
 
 module top (
-    input        CLK,       // 12Mhz
-    output [3:0] PM3,       // I2S BUS
-    input  [2:0] PM4        // SPI BUS
+    input        clk,  // 12Mhz
+    output [3:0] PM3,  // I2S BUS
+    input  [2:0] PM4   // SPI BUS
 );
 
   // SPI slave
-  reg [7:0] spi_data;
-  reg spi_recv;
-  spi_slave spi(
-      CLK,                // system clock
-      PM4[0],             // spi clock
-      PM4[1],             // spi mosi
-      PM4[2],             // spi chip select
-      spi_data,           // data out
-      spi_recv);          // data received
+  reg [7:0] spiData;
+  reg spiRecv;
+  spi_slave spi (
+      clk,  // system clock
+      PM4[0],  // spi clock
+      PM4[1],  // spi mosi
+      PM4[2],  // spi chip select
+      spiData,  // data out
+      spiRecv
+  );  // data received
 
   // input data decoder
   //
@@ -45,45 +46,55 @@ module top (
   //    1AAA AADD   - address, data MSB
   //    0?DD DDDD   -          data LSB
   //
-  reg [4:0] bus_addr;     // latched address
-  reg [7:0] bus_wdata;    // latched data
-  reg bus_we;           // write signal
-  always @(posedge CLK) begin
-    if (spi_recv) begin
-      if (spi_data[7] == 'b1) begin
-        bus_we <= 0;
-        bus_addr <= spi_data[6:2];
-        bus_wdata <= { spi_data[1:0], bus_wdata[5:0] };
+  reg [4:0] busAddr;  // latched address
+  reg [7:0] busDataW;  // latched data
+  reg       busWE;  // write signal
+  always @(posedge clk) begin
+    if (spiRecv) begin
+      if (spiData[7] == 'b1) begin
+        busWE <= 0;
+        busAddr <= spiData[6:2];
+        busDataW <= {spiData[1:0], busDataW[5:0]};
       end else begin
-        bus_we <= 1;
-        bus_wdata <= { bus_wdata[7:6], spi_data[5:0] };
+        busWE <= 1;
+        busDataW <= {busDataW[7:6], spiData[5:0]};
       end
     end else begin
-      bus_we <= 0;
+      busWE <= 0;
     end
   end
 
   // SID 1Mhz clock
-  wire clk_en;
-  sid_clk sid_clk_en(CLK, clk_en);
+  wire clkEn;
+  sid_clk sid_clk_en (
+      clk,
+      clkEn
+  );
 
   // CIC resampling filter
-  wire signed [15:0] flt_out;
-  cic_filter cicFilter(CLK, clk_en, i2s_sampled, sid_out, flt_out);
+  wire signed [15:0] fltOut;
+  cic_filter cicFilter (
+      clk,
+      clkEn,
+      i2sSampled,
+      sidOut,
+      fltOut
+  );
 
   // SID
-  wire signed [15:0] sid_out;
-  wire [7:0] bus_rdata;
-  sid the_sid(
-    .CLK(CLK),               // Master clock
-    .CLKen(clk_en),          // 1Mhz enable
-    .WR(bus_we),             // write data to sid addr
-    .ADDR(bus_addr),         // SID address bus
-    .DATAW(bus_wdata),       // C64 to SID
-    .DATAR(bus_rdata),       // SID to C64
-    .OUTPUT(sid_out),        // SID output
-    .POT_X(),
-    .POT_Y());
+  wire signed [15:0] sidOut;
+  wire [7:0] busDataR;
+  sid the_sid (
+      .clk   (clk),  // Master clock
+      .clkEn (clkEn),  // 1Mhz enable
+      .iWE   (busWE),  // write data to sid addr
+      .iAddr (busAddr),  // SID address bus
+      .iDataW(busDataW),  // C64 to SID
+      .oDataR(busDataR),  // SID to C64
+      .oOut  (sidOut),  // SID output
+      .ioPotX(),
+      .ioPotY()
+  );
 
   reg SCK;
   reg LRCLK;
@@ -94,17 +105,16 @@ module top (
   assign PM3[2] = DATA;
   assign PM3[3] = LRCLK;
 
-  wire signed [15:0] VAL = flt_out;
-  wire i2s_sampled;
-
   // instanciate the I2S encoder
-  i2s_master_t i2s(
-    .CLK(CLK),
-    .SMP(VAL),
-    .SCK(SCK),
-    .BCK(BCLK),
-    .DIN(DATA),
-    .LCK(LRCLK),
-    .SAMPLED(i2s_sampled));
+  wire i2sSampled;
+  i2s_master_t i2s (
+      .CLK(clk),
+      .SMP(fltOut),
+      .SCK(SCK),
+      .BCK(BCLK),
+      .DIN(DATA),
+      .LCK(LRCLK),
+      .SAMPLED(i2sSampled)
+  );
 
 endmodule
