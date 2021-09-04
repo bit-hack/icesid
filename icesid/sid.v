@@ -138,10 +138,12 @@ module sid (
   reg signed [15:0] bypass;
   always @(posedge clk) begin
     // note: shifts are here to create some headroom
+    /* verilog_format: off */
     bypass <=
-      (regFilt[0] ?             0 : (voiceAmp0 >>> 3)) +
-      (regFilt[1] ?             0 : (voiceAmp1 >>> 3)) +
+      ( regFilt[0]            ? 0 : (voiceAmp0 >>> 3)) +
+      ( regFilt[1]            ? 0 : (voiceAmp1 >>> 3)) +
       ((regFilt[2] | reg3Off) ? 0 : (voiceAmp2 >>> 3));
+    /* verilog_format: on */
   end
 
   // SID filter
