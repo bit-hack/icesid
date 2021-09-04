@@ -1,5 +1,10 @@
+// .___               _________.___________
+// |   | ____  ____  /   _____/|   \______ \
+// |   |/ ___\/ __ \ \_____  \ |   ||    |  \
+// |   \  \__\  ___/ /        \|   ||    `   \
+// |___|\___  >___  >_______  /|___/_______  /
+//          \/    \/        \/             \/
 `default_nettype none
-`timescale 1ns / 1ps
 
 module sid (
     input                clk,     // Master clock
@@ -21,52 +26,19 @@ module sid (
     reg3Off      = 0;
   end
 
-  // voice 0
-  wire msb0;
+  // oscillators
   wire [11:0] voiceOut0;
-  sid_voice #(
-      .BASE_ADDR('h0)
-  ) voice0 (
-      .clk(clk),
-      .clkEn(clkEn),
-      .iWE(iWE),
-      .iAddr(iAddr),
-      .iData(iDataW),
-      .iExtMSB(msb2),
-      .oMSB(msb0),
-      .oOut(voiceOut0)
-  );
-
-  // voice 1
-  wire msb1;
   wire [11:0] voiceOut1;
-  sid_voice #(
-      .BASE_ADDR('h7)
-  ) voice1 (
-      .clk(clk),
-      .clkEn(clkEn),
-      .iWE(iWE),
-      .iAddr(iAddr),
-      .iData(iDataW),
-      .iExtMSB(msb0),
-      .oMSB(msb1),
-      .oOut(voiceOut1)
-  );
-
-  // voice 2
-  wire msb2;
   wire [11:0] voiceOut2;
-  sid_voice #(
-      .BASE_ADDR('he)
-  ) voice2 (
+  sid_voices voices (
       .clk(clk),
       .clkEn(clkEn),
       .iWE(iWE),
       .iAddr(iAddr),
-      .iData(iDataW),
-      .iExtMSB(msb1),
-      .oMSB(msb2),
-      .oOut(voiceOut2)
+      .iDataW(iDataW),
+      .oVoice0(voiceOut0),
+      .oVoice1(voiceOut1),
+      .oVoice2(voiceOut2)
   );
 
   // envelope 0
@@ -165,6 +137,7 @@ module sid (
   // filter bypass mixer
   reg signed [15:0] bypass;
   always @(posedge clk) begin
+    // note: shifts are here to create some headroom
     bypass <=
       (regFilt[0] ?             0 : (voiceAmp0 >>> 3)) +
       (regFilt[1] ?             0 : (voiceAmp1 >>> 3)) +

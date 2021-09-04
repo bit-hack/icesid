@@ -1,4 +1,10 @@
-`default_nettype none `timescale 1ns / 1ps
+// .___               _________.___________
+// |   | ____  ____  /   _____/|   \______ \
+// |   |/ ___\/ __ \ \_____  \ |   ||    |  \
+// |   \  \__\  ___/ /        \|   ||    `   \
+// |___|\___  >___  >_______  /|___/_______  /
+//          \/    \/        \/             \/
+`default_nettype none
 
 module sid_voice (
     input         clk,      // master clock
@@ -55,6 +61,7 @@ module sid_voice (
   always @(posedge clk) begin
     if (clkEn) begin
       if (regSync && !iExtMSB && extMSBLag) begin
+        // reset due to sync
         phase <= 0;
       end else begin
         phase <= phase + {8'd0, regFreq};
@@ -99,15 +106,14 @@ module sid_voice (
   // todo: the data sheet says the waveforms are "ANDed" together but that is
   //       not what happens. its much more complex than that, but for now lets
   //       do this and revise it later.
-  reg [11:0] wavMix;
-
   // note: we invert here so that when all channels are off a zero is produced.
+  reg [11:0] wavMix;
   assign oOut = ~wavMix;
   always @(posedge clk) begin
     wavMix <= (regSaw   ? wavSaw   : 12'hfff) &
-               (regPulse ? wavPulse : 12'hfff) &
-               (regTri   ? wavTri   : 12'hfff) &
-               (regNoise ? wavNoise : 12'hfff);
+              (regPulse ? wavPulse : 12'hfff) &
+              (regTri   ? wavTri   : 12'hfff) &
+              (regNoise ? wavNoise : 12'hfff);
   end
 
   // address/data decoder
@@ -138,4 +144,60 @@ module sid_voice (
       endcase
     end
   end
+endmodule
+
+module sid_voices (
+    input         clk,      // master clock
+    input         clkEn,    // asserted at 1Mhz
+    input         iWE,      // data write
+    input  [ 4:0] iAddr,    // address bus
+    input  [ 7:0] iDataW,   // data bus
+    output [11:0] oVoice0,  // voice 0 output
+    output [11:0] oVoice1,  // voice 1 output
+    output [11:0] oVoice2   // voice 2 output
+);
+  // voice 0
+  wire msb0;
+  sid_voice #(
+      .BASE_ADDR('h0)
+  ) voice0 (
+      .clk(clk),
+      .clkEn(clkEn),
+      .iWE(iWE),
+      .iAddr(iAddr),
+      .iData(iDataW),
+      .iExtMSB(msb2),
+      .oMSB(msb0),
+      .oOut(oVoice0)
+  );
+
+  // voice 1
+  wire msb1;
+  sid_voice #(
+      .BASE_ADDR('h7)
+  ) voice1 (
+      .clk(clk),
+      .clkEn(clkEn),
+      .iWE(iWE),
+      .iAddr(iAddr),
+      .iData(iDataW),
+      .iExtMSB(msb0),
+      .oMSB(msb1),
+      .oOut(oVoice1)
+  );
+
+  // voice 2
+  wire msb2;
+  sid_voice #(
+      .BASE_ADDR('he)
+  ) voice2 (
+      .clk(clk),
+      .clkEn(clkEn),
+      .iWE(iWE),
+      .iAddr(iAddr),
+      .iData(iDataW),
+      .iExtMSB(msb1),
+      .oMSB(msb2),
+      .oOut(oVoice2)
+  );
 endmodule
