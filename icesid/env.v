@@ -110,8 +110,8 @@ module sid_env_imp (
   end
 
   always @(posedge clk) begin
-    case (stage)
-      STAGE_ATT: begin
+    case (1'b1)
+      stage[0]: begin
         if (iGate) begin
           if (env == 8'hff) begin
             stage <= STAGE_DEC_SUS;
@@ -124,7 +124,7 @@ module sid_env_imp (
           stage <= STAGE_REL;
         end
       end
-      STAGE_DEC_SUS: begin
+      stage[1]: begin
         if (iGate) begin
           if (divRst) begin
             if (env == sustainVal) begin
@@ -137,7 +137,7 @@ module sid_env_imp (
           stage <= STAGE_REL;
         end
       end
-      STAGE_REL: begin
+      stage[2]: begin
         if (iGate) begin
           stage <= STAGE_ATT;
         end else begin
