@@ -57,8 +57,9 @@ module filter (
   wire [15:0] resCoef = 16'hbfff - (regRes << 11);
 
   // 16x16 multiplier
-  reg signed  [16:0] mulA;
-  reg         [15:0] mulB;
+  // note: multiplier takes 2 cycles from setting mulA/B to reading mulOut
+  wire signed [16:0] mulA;
+  wire        [15:0] mulB;
   wire signed [15:0] mulOut;
   mult16x16 mul (
       .clk    (clk),
@@ -91,41 +92,44 @@ module filter (
     end
   end
 
-  // note: due to the registering of the multiplier inputs some extra
-  //       wait states had to be added to the state machine. this should
-  //       be fixed as its ugly.
-
   // note: the output of each filter mode is delayed by a number of cycles
   //       from each other which would cause the sum of multiple modes to
   //       be inaccurate. this should be fixed.
 
   // state variable filter loop:
   //
-  //      low + (band * cutoff)
-  // in - low - (band * res   )
-  // band     + (High * cutoff)
+  // low  =      low + (band * cutoff)
+  // high = in - low - (band * res   )
+  // band = band     + (High * cutoff)
   //
 
   reg [2:0] state;
 
-  always @(posedge clk) begin
+  always @(*) begin
     case (state)
-      0: begin mulA <= band; mulB <= cutCoefLag1; end
-      2: begin mulA <= band; mulB <= resCoef;     end
-      4: begin mulA <= high; mulB <= cutCoefLag1; end
-      default ;
+      0: mulA = band;
+      1: mulA = band;
+      2: mulA = high;
+      default: mulA <= 0;
+    endcase
+  end
+
+  always @(*) begin
+    case (state)
+      0: mulB = cutCoefLag1;
+      1: mulB = resCoef;
+      2: mulB = cutCoefLag1;
+      default: mulB <= 0;
     endcase
   end
 
   always @(posedge clk) begin
     case (state)
-      0: state <= clkEn ? 1 : 0;
-      1: state <= 2;  // delay - fixme
-      2: state <= 3;
-      3: state <= 4;  // delay - fixme
-      4: state <= 5;
-      5: state <= 6;  // delay - fixme
-      6: state <= 0;
+      0: state <= clkEn ? 1 : 0;  // delay
+      1: state <= 2;              // delay
+      2: state <= 3;              // low
+      3: state <= 4;              // high
+      4: state <= 0;              // band
       default: state <= 0;
     endcase
   end
@@ -134,7 +138,7 @@ module filter (
     case (state)
       2: low  <= low + mulOut;
       3: high <= iIn - low - mulOut;
-      5: band <= band + mulOut;
+      4: band <= band + mulOut;
       default ;
     endcase
   end
