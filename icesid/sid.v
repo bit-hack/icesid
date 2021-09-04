@@ -18,6 +18,7 @@ module sid (
     regFilt      = 0;
     regMode      = 0;
     regLastWrite = 0;
+    reg3Off      = 0;
   end
 
   // voice 0
@@ -165,9 +166,9 @@ module sid (
   reg signed [15:0] bypass;
   always @(posedge clk) begin
     bypass <=
-      (regFilt[0] ? 0 : (voiceAmp0 >>> 3)) +
-      (regFilt[1] ? 0 : (voiceAmp1 >>> 3)) +
-      (regFilt[2] ? 0 : (voiceAmp2 >>> 3));
+      (regFilt[0] ?             0 : (voiceAmp0 >>> 3)) +
+      (regFilt[1] ?             0 : (voiceAmp1 >>> 3)) +
+      ((regFilt[2] | reg3Off) ? 0 : (voiceAmp2 >>> 3));
   end
 
   // SID filter
@@ -233,6 +234,7 @@ module sid (
   reg [2:0] regMode;  // filter mode
   reg [3:0] regVolume;  // master volume
   reg [7:0] regLastWrite;  // last writen value
+  reg       reg3Off;  // Oscillator 3 disconnect
   always @(posedge clk) begin
     if (iWE) begin
       // kee track of the last write for read purposes
@@ -242,6 +244,7 @@ module sid (
         'h18: begin
           regMode   <= iDataW[6:4];
           regVolume <= iDataW[3:0];
+          reg3Off   <= iDataW[7];
         end
       endcase
     end
