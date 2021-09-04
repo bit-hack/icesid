@@ -15,8 +15,7 @@
 PROJ = icesid
 BUILD_DIR = build
 SRCS = i2c_state_machine.v i2c_master.v muacm.v sysmgr_hfosc.v  i2s.v sid_bus_if.v top.v
-ICESID_SRCS = sid.v env.v voice.v filter.v clip.v pot.v cic.v
-ALL_SRCS = $(addprefix reDIP-SID/,$(SRCS)) $(addprefix icesid/,$(ICESID_SRCS))
+ALL_SRCS = $(addprefix reDIP-SID/,$(SRCS)) $(ALL_ICESID_SRCS)
 SEED = 1337
 PCFFILE = reDIP-SID/redip-sid
 DEVICE = up5k
@@ -46,9 +45,3 @@ prog: $(BUILD_DIR)/$(PROJ).bin
 sudo-prog: $(BUILD_DIR)/$(PROJ).bin
 	@echo 'Executing prog as root!!!'
 	sudo dfu-util --device 1d50:6159:1d50:6156 --alt 0 -R --download $<
-
-clean:
-	rm -rf $(BUILD_DIR) obj_dir
-
-.SECONDARY:
-.PHONY: all prog clean sudo-prog

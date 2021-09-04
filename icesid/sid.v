@@ -1,60 +1,5 @@
-`default_nettype none `timescale 1ns / 1ps
-
-// 16x4 multiplier used for master volume
-module mdac16x4 (
-    input                clk,
-    input  signed [15:0] iVoice,
-    input         [ 3:0] iVol,
-    output signed [15:0] oOut
-);
-
-  wire signed [31:0] product;  // 16x16 product
-  SB_MAC16 mac (
-      .A  (iVoice),
-      .B  ({12'b0, iVol}),
-      .O  (product),
-      .CLK(clk),
-  );
-
-  defparam mac.A_SIGNED = 1'b1;  // voice is signed
-  defparam mac.B_SIGNED = 1'b0;  // env is unsigned
-  defparam mac.TOPOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
-  defparam mac.BOTOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
-
-  reg [15:0] out;
-  assign oOut = out;
-  always @(posedge clk) begin
-    out <= product[19:4];
-  end
-endmodule
-
-// 12x8 multiplier used for voice envelopes
-module mdac12x8 (
-    input                clk,
-    input  signed [11:0] iVoice,
-    input         [ 7:0] iEnv,
-    output signed [15:0] oOut
-);
-
-  wire signed [31:0] product;  // 16x16 product
-  SB_MAC16 mac (
-      .A  ({iVoice, 4'b0}),
-      .B  ({8'b0, iEnv}),
-      .O  (product),
-      .CLK(clk),
-  );
-
-  defparam mac.A_SIGNED = 1'b1;  // voice is signed
-  defparam mac.B_SIGNED = 1'b0;  // env is unsigned
-  defparam mac.TOPOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
-  defparam mac.BOTOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
-
-  reg [15:0] out;
-  assign oOut = out;
-  always @(posedge clk) begin
-    out <= product[23:8];
-  end
-endmodule
+`default_nettype none
+`timescale 1ns / 1ps
 
 module sid (
     input                clk,     // Master clock
@@ -165,17 +110,17 @@ module sid (
   wire [7:0] potX;
   sid_pot potx (
       .clk(clk),
-      .clk_en(clkEn),
-      .pot_val(potX),
-      .pot_pad(ioPotX)
+      .clkEn(clkEn),
+      .ioPotPad(ioPotX),
+      .oPotVal(potX)
   );
 
   wire [7:0] potY;
   sid_pot poty (
       .clk(clk),
-      .clk_en(clkEn),
-      .pot_val(potY),
-      .pot_pad(ioPotY)
+      .clkEn(clkEn),
+      .ioPotPad(ioPotY),
+      .oPotVal(potY)
   );
 
   // convert to signed format

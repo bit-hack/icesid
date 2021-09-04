@@ -1,35 +1,5 @@
 `default_nettype none
 
-// 16x16 multiplier for the filter
-module mult (
-    input                clk,
-    input  signed [16:0] iSignal,
-    input         [15:0] iCoef,
-    output signed [15:0] oOut
-);
-
-  wire signed [31:0] product;  // 16x16 product
-  assign oOut = product[31:16];
-
-  wire signed [15:0] clipped;
-  clipper clip (
-      iSignal,
-      clipped
-  );
-
-  SB_MAC16 mac (
-      .A  (clipped),
-      .B  (iCoef),
-      .O  (product),
-      .CLK(clk)
-  );
-
-  defparam mac.A_SIGNED = 1'b1;  // input is signed
-  defparam mac.B_SIGNED = 1'b0;  // coefficient is unsigned
-  defparam mac.TOPOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
-  defparam mac.BOTOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
-endmodule
-
 module filter (
     input                clk,    // system clock
     input                clkEn,  // clock enable
@@ -84,11 +54,11 @@ module filter (
   reg signed  [16:0] mulA;
   reg         [15:0] mulB;
   wire signed [15:0] mulOut;
-  mult mul (
-      clk,
-      mulA,
-      mulB,
-      mulOut
+  mult16x16 mul (
+      .clk    (clk),
+      .iSignal(mulA),
+      .iCoef  (mulB),
+      .oOut   (mulOut)
   );
 
   /* verilog_format: on */

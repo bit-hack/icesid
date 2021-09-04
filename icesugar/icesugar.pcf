@@ -9,7 +9,7 @@
 #set_io SW[2] 20
 #set_io SW[3] 21
 
-set_io CLK 35
+set_io clk 35
 
 #set_io RX 4
 #set_io TX 6

@@ -11,13 +11,6 @@ module sid_voice (
     output [11:0] oOut      // voice output
 );
 
-  // note: if we capture all the SID waveforms we could put them in a blockram
-  //       and play them back via a lookup table. this would require
-  //       (2^3 * 2^12) 12bit samples (32768). it seems like reSID does this
-  //       but it only has 8bit samples? perhaps they were captured from osc3.
-  //       this would be way more than the available 80Kbit block ram we have
-  //       on the ice40up5k device however.
-
   // tap from the phase acumulator to clock the noise LFSR
   localparam noiseClkBit = 19;
 

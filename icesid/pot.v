@@ -1,10 +1,10 @@
 `default_nettype none
 
 module sid_pot (
-    inout  wire       pot_pad,
-    output reg  [7:0] pot_val,
-    input  wire       clk_en,
-    input  wire       clk
+    input  wire       clk,
+    input  wire       clkEn,
+    inout  wire       ioPotPad,
+    output reg  [7:0] oPotVal
 );
 
   // Signals
@@ -25,7 +25,6 @@ module sid_pot (
   // Counting
   reg  [7:0] cnt;
 
-
   // IOB
   // ---
 
@@ -34,7 +33,7 @@ module sid_pot (
       .PULLUP     (1'b0),
       .IO_STANDARD("SB_LVCMOS")
   ) pot_iob_I (
-      .PACKAGE_PIN  (pot_pad),
+      .PACKAGE_PIN  (ioPotPad),
       .INPUT_CLK    (clk),
       .OUTPUT_CLK   (clk),
       .OUTPUT_ENABLE(iob_oe),
@@ -42,31 +41,45 @@ module sid_pot (
       .D_IN_0       (iob_i)
   );
 
-
   // Control
   // -------
 
   // Timer
-  always @(posedge clk) if (clk_en) cyc_cnt <= {1'b0, cyc_cnt[7:0]} + 1;
+  always @(posedge clk) begin
+    if (clkEn) begin
+      cyc_cnt <= {1'b0, cyc_cnt[7:0]} + 1;
+    end
+  end
 
   assign cyc_stb = cyc_cnt[8];
 
   // State tracking
-  always @(posedge clk) if (clk_en) ctrl_discharging <= ctrl_discharging ^ cyc_stb;
+  always @(posedge clk) begin
+    if (clkEn) begin
+      ctrl_discharging <= ctrl_discharging ^ cyc_stb;
+    end
+  end
 
   assign ctrl_charging = ~ctrl_discharging;
 
   // IO
   assign iob_oe = ctrl_discharging;
 
-
   // Counting
   // --------
 
   // Count all cycles input is 0 while charging
-  always @(posedge clk) if (clk_en) cnt <= (cnt + {7'd0, ~iob_i}) & {8{ctrl_charging}};
+  always @(posedge clk) begin
+    if (clkEn) begin
+      cnt <= (cnt + {7'd0, ~iob_i}) & {8{ctrl_charging}};
+    end
+  end
 
   // Final value register
-  always @(posedge clk) if (clk_en & ctrl_charging & cyc_stb) pot_val <= cnt;
+  always @(posedge clk) begin
+    if (clkEn & ctrl_charging & cyc_stb) begin
+      oPotVal <= cnt;
+    end
+  end
 
 endmodule  // sid_pot
