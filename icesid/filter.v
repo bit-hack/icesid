@@ -70,7 +70,7 @@ module filter (
   /* verilog_format: on */
 
   initial begin
-    state       = 7;
+    state       = 0;
     low         = 0;
     high        = 0;
     band        = 0;
@@ -99,35 +99,44 @@ module filter (
   //       from each other which would cause the sum of multiple modes to
   //       be inaccurate. this should be fixed.
 
+  // state variable filter loop:
+  //
+  //      low + (band * cutoff)
+  // in - low - (band * res   )
+  // band     + (High * cutoff)
+  //
+
   reg [2:0] state;
+
   always @(posedge clk) begin
-    if (clkEn) begin
-      mulA  <= band;
-      mulB  <= cutCoefLag1;
-      state <= 0;
-    end else begin
-      case (state)
-        0: state <= 1;  // delay - fixme
-        1: begin
-          low   <= low + mulOut;  // low + (cutoff * band)
-          mulA  <= band;
-          mulB  <= resCoef;
-          state <= 2;
-        end
-        2: state <= 3;  // delay - fixme
-        3: begin
-          high  <= iIn - low - mulOut;  // in - low - (res * band)
-          mulA  <= high;
-          mulB  <= cutCoefLag1;
-          state <= 4;
-        end
-        4: state <= 5;  // delay - fixme
-        5: begin
-          band  <= band + mulOut;  // band + (cutoff * High)
-          state <= 6;
-        end
-      endcase
-    end
+    case (state)
+      0: begin mulA <= band; mulB <= cutCoefLag1; end
+      2: begin mulA <= band; mulB <= resCoef;     end
+      4: begin mulA <= high; mulB <= cutCoefLag1; end
+      default ;
+    endcase
+  end
+
+  always @(posedge clk) begin
+    case (state)
+      0: state <= clkEn ? 1 : 0;
+      1: state <= 2;  // delay - fixme
+      2: state <= 3;
+      3: state <= 4;  // delay - fixme
+      4: state <= 5;
+      5: state <= 6;  // delay - fixme
+      6: state <= 0;
+      default: state <= 0;
+    endcase
+  end
+
+  always @(posedge clk) begin
+    case (state)
+      2: low  <= low + mulOut;
+      3: high <= iIn - low - mulOut;
+      5: band <= band + mulOut;
+      default ;
+    endcase
   end
 
   // address/data decoder
@@ -136,15 +145,9 @@ module filter (
   always @(posedge clk) begin
     if (iWE) begin
       case (iAddr)
-        'h15: begin
-          regFreq <= {regFreq[10:3], iData[2:0]};
-        end
-        'h16: begin
-          regFreq <= {iData[7:0], regFreq[2:0]};
-        end
-        'h17: begin
-          regRes <= {iData[7:4]};
-        end
+        'h15: regFreq <= {regFreq[10:3], iData[2:0]};
+        'h16: regFreq <= {iData[7:0], regFreq[2:0]};
+        'h17: regRes  <= {iData[7:4]};
       endcase
     end
   end
