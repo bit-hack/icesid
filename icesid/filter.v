@@ -91,50 +91,45 @@ module filter (
     end
   end
 
-  // note: due to the registering of the multiplier inputs some extra
-  //       wait states had to be added to the state machine. this should
-  //       be fixed as its ugly.
-
   // note: the output of each filter mode is delayed by a number of cycles
   //       from each other which would cause the sum of multiple modes to
   //       be inaccurate. this should be fixed.
 
   // state variable filter loop:
   //
-  //      low + (band * cutoff)
-  // in - low - (band * res   )
-  // band     + (High * cutoff)
+  // low  =      low + (band * cutoff)
+  // high = in - low - (band * res   )
+  // band = band     + (High * cutoff)
   //
 
   reg [2:0] state;
-
-  always @(posedge clk) begin
-    case (state)
-      0: begin mulA <= band; mulB <= cutCoefLag1; end
-      2: begin mulA <= band; mulB <= resCoef;     end
-      4: begin mulA <= high; mulB <= cutCoefLag1; end
-      default ;
-    endcase
-  end
-
   always @(posedge clk) begin
     case (state)
       0: state <= clkEn ? 1 : 0;
-      1: state <= 2;  // delay - fixme
+      1: state <= 2;
       2: state <= 3;
-      3: state <= 4;  // delay - fixme
-      4: state <= 5;
-      5: state <= 6;  // delay - fixme
-      6: state <= 0;
+      3: state <= 4; // delay for `high` to propagate
+      4: state <= 0;
       default: state <= 0;
     endcase
   end
 
+  // setup multiplier one clock ahead
   always @(posedge clk) begin
     case (state)
-      2: low  <= low + mulOut;
-      3: high <= iIn - low - mulOut;
-      5: band <= band + mulOut;
+      0: begin mulA <= band; mulB <= cutCoefLag1; end
+      1: begin mulA <= band; mulB <= resCoef;     end
+      3: begin mulA <= high; mulB <= cutCoefLag1; end
+      default ;
+    endcase
+  end
+
+  // compute filter stages
+  always @(posedge clk) begin
+    case (state)
+      1: low  <= low + mulOut;
+      2: high <= iIn - low - mulOut;
+      4: band <= band + mulOut;
       default ;
     endcase
   end
