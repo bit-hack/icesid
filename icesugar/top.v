@@ -109,7 +109,7 @@ module top (
   wire i2sSampled;
   i2s_master_t i2s (
       .CLK(clk),
-      .SMP(fltOut),
+      .SMP(sidOut),
       .SCK(SCK),
       .BCK(BCLK),
       .DIN(DATA),
