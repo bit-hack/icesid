@@ -26,7 +26,7 @@ all: $(BUILD_DIR)/$(PROJ).bin
 
 $(BUILD_DIR)/$(PROJ).json: $(ALL_SRCS)
 	@mkdir -p $(@D)
-	yosys -f verilog -l $(BUILD_DIR)/$(PROJ).yslog -p 'read_verilog $^; synth_ice40 -json $@ -top top'
+	yosys -f verilog -l $(BUILD_DIR)/$(PROJ).yslog -p 'read_verilog $^; synth_ice40 -dsp -json $@ -top top'
 
 $(BUILD_DIR)/$(PROJ).asc: $(BUILD_DIR)/$(PROJ).json $(PCFFILE).pcf
 	@mkdir -p $(@D)
