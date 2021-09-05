@@ -104,40 +104,32 @@ module filter (
   //
 
   reg [2:0] state;
-
-  always @(*) begin
-    case (state)
-      0: mulA = band;
-      1: mulA = band;
-      2: mulA = high;
-      default: mulA <= 0;
-    endcase
-  end
-
-  always @(*) begin
-    case (state)
-      0: mulB = cutCoefLag1;
-      1: mulB = resCoef;
-      2: mulB = cutCoefLag1;
-      default: mulB <= 0;
-    endcase
-  end
-
   always @(posedge clk) begin
     case (state)
-      0: state <= clkEn ? 1 : 0;  // delay
-      1: state <= 2;              // delay
-      2: state <= 3;              // low
-      3: state <= 4;              // high
-      4: state <= 0;              // band
+      0: state <= clkEn ? 1 : 0;
+      1: state <= 2;
+      2: state <= 3;
+      3: state <= 4; // delay for `high` to propagate
+      4: state <= 0;
       default: state <= 0;
     endcase
   end
 
+  // setup multiplier one clock ahead
   always @(posedge clk) begin
     case (state)
-      2: low  <= low + mulOut;
-      3: high <= iIn - low - mulOut;
+      0: begin mulA <= band; mulB <= cutCoefLag1; end
+      1: begin mulA <= band; mulB <= resCoef;     end
+      3: begin mulA <= high; mulB <= cutCoefLag1; end
+      default ;
+    endcase
+  end
+
+  // compute filter stages
+  always @(posedge clk) begin
+    case (state)
+      1: low  <= low + mulOut;
+      2: high <= iIn - low - mulOut;
       4: band <= band + mulOut;
       default ;
     endcase
