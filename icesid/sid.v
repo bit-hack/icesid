@@ -102,9 +102,9 @@ module sid (
   wire signed [11:0] voiceSigned2 = {~voiceOut2[11], voiceOut2[10:0]};
 
   // simulate multiplying dac (12bit-signed * 8bit-unsigned)
-  reg signed [15:0] voiceAmp0;
-  reg signed [15:0] voiceAmp1;
-  reg signed [15:0] voiceAmp2;
+  reg signed [31:0] voiceAmp0;
+  reg signed [31:0] voiceAmp1;
+  reg signed [31:0] voiceAmp2;
   mdac12x8 mdac0 (
       clk,
       voiceSigned0,
@@ -125,31 +125,29 @@ module sid (
   );
 
   // pre-filter mixer
-  reg signed [15:0] preFilter;
+  reg signed [31:0] preFilter;
   always @(posedge clk) begin
-    // note: shifts are here to create some headroom
     preFilter <=
-      (regFilt[0] ? (voiceAmp0 >>> 3) : 0) +
-      (regFilt[1] ? (voiceAmp1 >>> 3) : 0) +
-      (regFilt[2] ? (voiceAmp2 >>> 3) : 0);
+      (regFilt[0] ? voiceAmp0 : 0) +
+      (regFilt[1] ? voiceAmp1 : 0) +
+      (regFilt[2] ? voiceAmp2 : 0);
   end
 
   // filter bypass mixer
-  reg signed [15:0] bypass;
+  reg signed [31:0] bypass;
   always @(posedge clk) begin
-    // note: shifts are here to create some headroom
     /* verilog_format: off */
     bypass <=
-      ( regFilt[0]            ? 0 : (voiceAmp0 >>> 3)) +
-      ( regFilt[1]            ? 0 : (voiceAmp1 >>> 3)) +
-      ((regFilt[2] | reg3Off) ? 0 : (voiceAmp2 >>> 3));
+      ( regFilt[0]            ? 0 : voiceAmp0) +
+      ( regFilt[1]            ? 0 : voiceAmp1) +
+      ((regFilt[2] | reg3Off) ? 0 : voiceAmp2);
     /* verilog_format: on */
   end
 
   // SID filter
-  wire signed [15:0] sidFilterLP;
-  wire signed [15:0] sidFilterBP;
-  wire signed [15:0] sidFilterHP;
+  wire signed [31:0] sidFilterLP;
+  wire signed [31:0] sidFilterBP;
+  wire signed [31:0] sidFilterHP;
   filter sid_filter (
       clk,
       clkEn,
@@ -163,7 +161,7 @@ module sid (
   );
 
   // post-filter mixer
-  reg signed [16:0] postFilter;
+  reg signed [31:0] postFilter;
   always @(posedge clk) begin
     postFilter <=
       bypass +
@@ -175,7 +173,7 @@ module sid (
   // clip after summing filter and bypass
   wire signed [15:0] preMasterVol;
   clipper post_filter_clip (
-      postFilter,
+      postFilter[24:8],  // note: 17bits
       preMasterVol
   );
 

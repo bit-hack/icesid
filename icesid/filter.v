@@ -9,31 +9,22 @@
 module filter (
     input                clk,    // system clock
     input                clkEn,  // clock enable
-    input  signed [15:0] iIn,    // filter input
+    input  signed [31:0] iIn,    // filter input
     input                iWE,    // data write
     input         [ 4:0] iAddr,  // address bus
     input         [ 7:0] iData,  // data bus
-    output signed [15:0] oLP,    // lowpass output
-    output signed [15:0] oBP,    // bandpass output
-    output signed [15:0] oHP     // highpass output
+    output signed [31:0] oLP,    // lowpass output
+    output signed [31:0] oBP,    // bandpass output
+    output signed [31:0] oHP     // highpass output
 );
 
-  reg signed [16:0] low;
-  reg signed [16:0] high;
-  reg signed [16:0] band;
+  reg signed [31:0] low;
+  reg signed [31:0] high;
+  reg signed [31:0] band;
 
-  clipper oLPClipper (
-      low,
-      oLP
-  );
-  clipper oBPClipper (
-      band,
-      oBP
-  );
-  clipper oHPClipper (
-      high,
-      oHP
-  );
+  assign oLP = low;
+  assign oBP = band;
+  assign oHP = high;
 
   /* verilog_format: off */
 
@@ -56,15 +47,15 @@ module filter (
   //       into a useable range but should be tuned in the future.
   wire [15:0] resCoef = 16'hbfff - (regRes << 11);
 
-  // 16x16 multiplier
+  // 32x16 multiplier
   // note: multiplier takes 2 cycles from setting mulA/B to reading mulOut
-  wire signed [16:0] mulA;
+  wire signed [31:0] mulA;
   wire        [15:0] mulB;
-  wire signed [15:0] mulOut;
-  mult16x16 mul (
+  wire signed [31:0] mulOut;
+  mult32x16 mul (
       .clk    (clk),
-      .iSignal(mulA),
-      .iCoef  (mulB),
+      .iLHS   (mulA),
+      .iRHS   (mulB),
       .oOut   (mulOut)
   );
 
