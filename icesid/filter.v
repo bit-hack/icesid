@@ -101,12 +101,13 @@ module filter (
       1: state <= 2;
       2: state <= 3;
       3: state <= 4; // delay for `high` to propagate
-      4: state <= 0;
+      4: state <= 5;
+      5: state <= 0;
       default: state <= 0;
     endcase
   end
 
-  // setup multiplier one clock ahead
+  // setup multiplier two clock ahead
   always @(posedge clk) begin
     case (state)
       0: begin mulA <= band; mulB <= cutCoefLag1; end
@@ -119,9 +120,9 @@ module filter (
   // compute filter stages
   always @(posedge clk) begin
     case (state)
-      1: low  <= low + mulOut;
-      2: high <= iIn - low - mulOut;
-      4: band <= band + mulOut;
+      2: low  <= low + mulOut;
+      3: high <= iIn - low - mulOut;
+      5: band <= band + mulOut;
       default ;
     endcase
   end
