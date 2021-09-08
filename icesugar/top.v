@@ -22,6 +22,26 @@ module sid_clk (
   end
 endmodule
 
+module filter15khz (
+    input                clk,
+    input                clkEn,
+    input  signed [15:0] iIn,
+    output signed [15:0] oOut
+);
+
+  reg signed [15:0] out;
+  assign oOut = out;
+
+  wire signed [31:0] p0 = $signed(16'h099b) * iIn;
+  wire signed [31:0] p1 = $signed(16'h7664) * out;
+
+  always @(posedge clk) begin
+    if (clkEn) begin
+      out <= p0[30:15] + p1[30:15];
+    end
+  end
+endmodule
+
 module top (
     input        clk,  // 12Mhz
     output [3:0] PM3,  // I2S BUS
@@ -71,16 +91,6 @@ module top (
       clkEn
   );
 
-  // CIC resampling filter
-  wire signed [15:0] fltOut;
-  cic_filter cicFilter (
-      clk,
-      clkEn,
-      i2sSampled,
-      sidOut,
-      fltOut
-  );
-
   // SID
   wire signed [15:0] sidOut;
   wire [7:0] busDataR;
@@ -96,6 +106,14 @@ module top (
       .ioPotY()
   );
 
+  wire signed [15:0] fltOut;
+  filter15khz flt (
+      .clk  (clk),
+      .clkEn(clkEn),
+      .iIn  (sidOut),
+      .oOut (fltOut)
+  );
+
   reg SCK;
   reg LRCLK;
   reg DATA;
@@ -109,7 +127,7 @@ module top (
   wire i2sSampled;
   i2s_master_t i2s (
       .CLK(clk),
-      .SMP(sidOut),
+      .SMP(fltOut),
       .SCK(SCK),
       .BCK(BCLK),
       .DIN(DATA),
