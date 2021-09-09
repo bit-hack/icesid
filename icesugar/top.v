@@ -29,15 +29,30 @@ module filter15khz (
     output signed [15:0] oOut
 );
 
-  reg signed [15:0] out;
-  assign oOut = out;
+  reg signed [15:0] s0;
+  reg signed [15:0] s1;
+  reg signed [15:0] s2;
+  assign oOut = s2;
 
-  wire signed [31:0] p0 = $signed(16'h099b) * iIn;
-  wire signed [31:0] p1 = $signed(16'h7664) * out;
+  initial begin
+    s0 <= 0;
+    s1 <= 0;
+    s2 <= 0;
+  end
+
+  wire signed [15:0] c0 = $signed(16'h099b);  // 15Khz
+  wire signed [15:0] c1 = $signed(16'h0a86);  // 17.5Khz
+  wire signed [15:0] c2 = $signed(16'h0b6e);  // 20Khz
+
+  wire signed [31:0] t0 = c0 * (iIn - s0);
+  wire signed [31:0] t1 = c1 * (s0  - s1);
+  wire signed [31:0] t2 = c2 * (s1  - s2);
 
   always @(posedge clk) begin
     if (clkEn) begin
-      out <= p0[30:15] + p1[30:15];
+      s0 <= s0 + t0[30:15];
+      s1 <= s1 + t1[30:15];
+      s2 <= s2 + t2[30:15];
     end
   end
 endmodule
