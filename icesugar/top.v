@@ -5,7 +5,6 @@ module sid_clk (
     input  clk,
     output clkEn
 );
-
   reg [4:0] counter;
   wire clkEn = (counter == 0);
 
@@ -18,41 +17,6 @@ module sid_clk (
       counter <= 5'd11;
     end else begin
       counter <= counter - 5'd1;
-    end
-  end
-endmodule
-
-module filter15khz (
-    input                clk,
-    input                clkEn,
-    input  signed [15:0] iIn,
-    output signed [15:0] oOut
-);
-
-  reg signed [15:0] s0;
-  reg signed [15:0] s1;
-  reg signed [15:0] s2;
-  assign oOut = s2;
-
-  initial begin
-    s0 <= 0;
-    s1 <= 0;
-    s2 <= 0;
-  end
-
-  wire signed [15:0] c0 = $signed(16'h099b);  // 15Khz
-  wire signed [15:0] c1 = $signed(16'h0a86);  // 17.5Khz
-  wire signed [15:0] c2 = $signed(16'h0b6e);  // 20Khz
-
-  wire signed [31:0] t0 = c0 * (iIn - s0);
-  wire signed [31:0] t1 = c1 * (s0  - s1);
-  wire signed [31:0] t2 = c2 * (s1  - s2);
-
-  always @(posedge clk) begin
-    if (clkEn) begin
-      s0 <= s0 + t0[30:15];
-      s1 <= s1 + t1[30:15];
-      s2 <= s2 + t2[30:15];
     end
   end
 endmodule
@@ -121,14 +85,6 @@ module top (
       .ioPotY()
   );
 
-  wire signed [15:0] fltOut;
-  filter15khz flt (
-      .clk  (clk),
-      .clkEn(clkEn),
-      .iIn  (sidOut),
-      .oOut (fltOut)
-  );
-
   reg SCK;
   reg LRCLK;
   reg DATA;
@@ -142,7 +98,7 @@ module top (
   wire i2sSampled;
   i2s_master_t i2s (
       .CLK(clk),
-      .SMP(fltOut),
+      .SMP(sidOut),
       .SCK(SCK),
       .BCK(BCLK),
       .DIN(DATA),

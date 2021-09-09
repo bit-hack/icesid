@@ -188,8 +188,17 @@ module sid (
       postMasterVol
   );
 
+  // output state
+  wire signed [15:0] postOutStage;
+  filter15khz outState (
+      .clk(clk),
+      .clkEn(clkEn),
+      .iIn(postMasterVol),
+      .oOut(postOutStage)
+  );
+
   // SID output
-  assign oOut = postMasterVol;
+  assign oOut = postOutStage;
 
   // handle data reads
   // note: the real sid returns the last value writen to ANY

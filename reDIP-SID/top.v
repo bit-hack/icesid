@@ -67,16 +67,6 @@ module top (
       .rst(rst)
   );
 
-  // downsampling filter
-  wire signed [15:0] fltOut;
-  cic_filter flt (
-      sys_clk,
-      clk_en,
-      i2sSampled,
-      sidOut,
-      fltOut
-  );
-
   // SID
   wire signed [15:0] sidOut;
   sid the_sid (
@@ -95,7 +85,7 @@ module top (
   wire i2sSampled;
   i2s i2s_tx (
       sys_clk,
-      fltOut,
+      sidOut,
       i2s_sclk,
       i2s_lrclk,
       i2s_din,
