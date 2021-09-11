@@ -2,6 +2,65 @@
 
 //`define NO_MUACM
 
+// 24Mhz to 1Mhz clock enable generator
+module sid_clk (
+    input  clk,
+    output clkEn
+);
+  reg [4:0] counter;
+  wire clkEn = (counter == 0);
+
+  initial begin
+    counter <= 0;
+  end
+
+  always @(posedge clk) begin
+    if (clkEn) begin
+      counter <= 5'd23;
+    end else begin
+      counter <= counter - 5'd1;
+    end
+  end
+endmodule
+
+module tx_decode(
+    input        clk,
+    input  [7:0] iTxData,
+    input        iTxValid,
+    output [7:0] oData,
+    output [4:0] oAddr,
+    output       oWE
+);
+
+  assign oData = busDataW;
+  assign oAddr = busAddr;
+  assign oWE   = busWE;
+
+  // input data decoder
+  //
+  // receive format:
+  //    1AAA AADD   - address, data MSB
+  //    0?DD DDDD   -          data LSB
+  //
+  reg [4:0] busAddr;  // latched address
+  reg [7:0] busDataW;  // latched data
+  reg       busWE;  // write signal
+  always @(posedge clk) begin
+    if (iTxValid) begin
+      if (iTxData[7] == 'b1) begin
+        busWE <= 0;
+        busAddr <= iTxData[6:2];
+        busDataW <= {iTxData[1:0], busDataW[5:0]};
+      end else begin
+        busWE <= 1;
+        busDataW <= {busDataW[7:6], iTxData[5:0]};
+      end
+    end else begin
+      busWE <= 0;
+    end
+  end
+endmodule
+
 module top (
     // I2S
     output wire i2s_din,
@@ -42,9 +101,10 @@ module top (
     inout  wire pot_x,
     inout  wire pot_y
 );
+
+`ifdef TX_IFACE
   wire [4:0] bus_addr;
   wire [7:0] bus_wdata;
-  wire [7:0] bus_rdata;
   wire       bus_we;
   wire       clk_en;
   reg        bus_re;
@@ -66,9 +126,11 @@ module top (
       .clk(sys_clk),
       .rst(rst)
   );
+`endif
 
   // SID
   wire signed [15:0] sidOut;
+  wire [7:0] bus_rdata;
   sid the_sid (
       .clk   (sys_clk),  // Master clock
       .clkEn (clk_en),  // 1Mhz enable
@@ -103,11 +165,20 @@ module top (
       .rst    (rst)
   );
 
+  wire clk_en;
+  sid_clk sidClkDiv(sys_clk, clk_en);
+
+  wire [7:0] tx_data;
+  wire       tx_valid;
+  wire [7:0] bus_wdata;
+  wire [4:0] bus_addr;
+  wire       bus_we;
+  tx_decode decode(sys_clk, tx_data, tx_valid, bus_wdata, bus_addr, bus_we);
+
 `ifndef NO_MUACM
   // Local signals
   wire bootloader;
   reg  boot = 1'b0;
-
   // Instance
   muacm acm_I (
       .usb_dp       (usb_dp),
@@ -119,9 +190,9 @@ module top (
       .in_ready     (),
       .in_flush_now (1'b0),
       .in_flush_time(1'b1),
-      .out_data     (),
+      .out_data     (tx_data),
       .out_last     (),
-      .out_valid    (),
+      .out_valid    (tx_valid),
       .out_ready    (1'b1),
       .bootloader   (bootloader),
       .clk          (clk_usb),
