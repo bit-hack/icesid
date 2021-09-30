@@ -63,8 +63,6 @@
 //01 16 00 4f // 9.5dB gain at 115Hz
 //01 18 00 3B // 3dB gain at 330Hz
 
-
-00 22 00 00 // 12dB volume boost
 00 24 00 27 // unmute
 00 10 3c 3c // 0dB DAC Volume
 00 0e 02 00 // Enable volume ramp
