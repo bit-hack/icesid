@@ -162,14 +162,31 @@ module sid (
       sidFilterHP
   );
 
+  // DC offset for digital sample volume hack
+  // Quoth resid:
+  //
+  // The mixer has a small input DC offset. This is found as follows:
+  //
+  // The "zero" output level of the mixer measured on the SID audio
+  // output pin is 5.50V at zero volume, and 5.44 at full
+  // volume. This yields a DC offset of (5.44V - 5.50V) = -0.06V.
+  //
+  // The DC offset is thus -0.06V/1.05V ~ -1/18 of the dynamic range
+  // of one voice. See voice.cc for measurement of the dynamic
+  // range.
+  parameter mixer_width = 17;
+  parameter real mixer_DC_num = -0.06;
+  parameter real mixer_DC_denom = 1.05;
+  parameter integer mixer_DC = $rtoi(mixer_DC_num/mixer_DC_denom * 2.0**mixer_width);
+
   // post-filter mixer
-  reg signed [16:0] postFilter;
+  reg signed [mixer_width-1:0] postFilter;
   always @(posedge clk) begin
     postFilter <=
       bypass +
       (regMode[0] ? sidFilterLP : 0) +
       (regMode[1] ? sidFilterBP : 0) +
-      (regMode[2] ? sidFilterHP : 0);
+      (regMode[2] ? sidFilterHP : 0) + mixer_DC;
   end
 
   // clip after summing filter and bypass
