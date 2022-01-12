@@ -60,8 +60,8 @@ module sid_voice (
   reg noiseClkLag;
   always @(posedge clk) begin
     if (clkEn) begin
-      if (regSync && !iExtMSB && extMSBLag) begin
-        // reset due to sync
+      if (regTest || regSync && !iExtMSB && extMSBLag) begin
+        // reset due to sync or test bit being high
         phase <= 0;
       end else begin
         phase <= phase + {8'd0, regFreq};
@@ -77,14 +77,13 @@ module sid_voice (
   end
 
   // noise generator (23bit LFSR)
-  // todo: pass in the test bit
   // todo: noise lockup
   reg [22:0] lfsr;
   always @(posedge clk) begin
     if (clkEn) begin
       // update noise when bit 19 goes high
       if (phase[noiseClkBit] && !noiseClkLag) begin
-        lfsr <= {lfsr[21:0], lfsr[22] ^ lfsr[21]};
+        lfsr <= {lfsr[21:0], (lfsr[22] ^ lfsr[21]) | regTest};
       end
     end
   end
