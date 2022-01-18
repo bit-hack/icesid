@@ -24,15 +24,15 @@ module sid_voice (
   parameter BASE_ADDR = 0;
 
   // voice related internal registers
-  reg [15:0] regFreq;  // frequency
-  reg [11:0] regPW;  // pulse width
-  reg        regNoise;  // wave-select noise enable
-  reg        regPulse;  // wave-select pulse enable
-  reg        regSaw;  // wave-select saw enable
-  reg        regTri;  // wave-select triangle enable
-  reg        regTest;  // test register
-  reg        regRingMod;  // ring modulate
-  reg        regSync;  // oscillator sync
+  reg [15:0] regFreq;    // frequency
+  reg [11:0] regPW;      // pulse width
+  reg        regNoise;   // wave-select noise enable
+  reg        regPulse;   // wave-select pulse enable
+  reg        regSaw;     // wave-select saw enable
+  reg        regTri;     // wave-select triangle enable
+  reg        regTest;    // test register
+  reg        regRingMod; // ring modulate
+  reg        regSync;    // oscillator sync
 
   // initial conditions
   initial begin
@@ -60,8 +60,8 @@ module sid_voice (
   reg noiseClkLag;
   always @(posedge clk) begin
     if (clkEn) begin
-      if (regSync && !iExtMSB && extMSBLag) begin
-        // reset due to sync
+      if (regTest || regSync && !iExtMSB && extMSBLag) begin
+        // reset due to sync or test bit being high
         phase <= 0;
       end else begin
         phase <= phase + {8'd0, regFreq};
@@ -77,14 +77,13 @@ module sid_voice (
   end
 
   // noise generator (23bit LFSR)
-  // todo: pass in the test bit
   // todo: noise lockup
   reg [22:0] lfsr;
   always @(posedge clk) begin
     if (clkEn) begin
       // update noise when bit 19 goes high
       if (phase[noiseClkBit] && !noiseClkLag) begin
-        lfsr <= {lfsr[21:0], lfsr[22] ^ lfsr[21]};
+        lfsr <= {lfsr[21:0], (lfsr[22] ^ lfsr[21]) | regTest};
       end
     end
   end
@@ -106,14 +105,13 @@ module sid_voice (
   // todo: the data sheet says the waveforms are "ANDed" together but that is
   //       not what happens. its much more complex than that, but for now lets
   //       do this and revise it later.
-  // note: we invert here so that when all channels are off a zero is produced.
   reg [11:0] wavMix;
-  assign oOut = ~wavMix;
+  assign oOut = wavMix;
   always @(posedge clk) begin
-    wavMix <= (regSaw   ? wavSaw   : 12'hfff) &
-              (regPulse ? wavPulse : 12'hfff) &
-              (regTri   ? wavTri   : 12'hfff) &
-              (regNoise ? wavNoise : 12'hfff);
+    wavMix <= (regSaw   ? wavSaw   : 12'h000) |
+              (regPulse ? wavPulse : 12'h000) |
+              (regTri   ? wavTri   : 12'h000) |
+              (regNoise ? wavNoise : 12'h000);
   end
 
   // address/data decoder
