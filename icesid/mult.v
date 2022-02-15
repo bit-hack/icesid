@@ -14,8 +14,14 @@ module mult16x16 (
     output signed [15:0] oOut
 );
 
-  wire signed [31:0] product;  // 16x16 product
+`ifdef VERILATOR
+  reg signed [31:0] product;  // 16x16 product
   assign oOut = product[31:16];
+  always @(clk) begin
+    product = iSignal * iCoef;
+  end
+
+`else
 
   wire signed [15:0] clipped;
   clipper clip (
@@ -23,6 +29,8 @@ module mult16x16 (
       clipped
   );
 
+  wire signed [31:0] product;  // 16x16 product
+  assign oOut = product[31:16];
   SB_MAC16 mac (
       .A  (clipped),
       .B  (iCoef),
@@ -34,6 +42,7 @@ module mult16x16 (
   defparam mac.B_SIGNED = 1'b0;  // coefficient is unsigned
   defparam mac.TOPOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
   defparam mac.BOTOUTPUT_SELECT = 2'b11;  // Mult16x16 data output
+`endif  // VERILATOR
 endmodule
 
 // 16x4 multiplier used for master volume
@@ -43,6 +52,15 @@ module mdac16x4 (
     input         [ 3:0] iVol,
     output signed [15:0] oOut
 );
+
+`ifdef VERILATOR
+  reg signed [19:0] product;  // 16x4 product
+  assign oOut = product[19:4];
+  always @(clk) begin
+    product = iVoice * iVol;
+  end
+
+`else
 
   wire signed [31:0] product;  // 16x16 product
   SB_MAC16 mac (
@@ -62,6 +80,7 @@ module mdac16x4 (
   always @(posedge clk) begin
     out <= product[19:4];
   end
+`endif // VERILATOR
 endmodule
 
 // 12x8 multiplier used for voice envelopes
@@ -72,6 +91,14 @@ module mdac12x8 (
     output signed [15:0] oOut
 );
 
+`ifdef VERILATOR
+  reg signed [19:0] product;  // 16x4 product
+  assign oOut = product[19:4];
+  always @(clk) begin
+    product = iVoice * iEnv;
+  end
+
+`else
   wire signed [31:0] product;  // 16x16 product
   SB_MAC16 mac (
       .A  ({iVoice, 4'b0}),
@@ -90,4 +117,5 @@ module mdac12x8 (
   always @(posedge clk) begin
     out <= product[23:8];
   end
+`endif  // VERILATOR
 endmodule

@@ -34,6 +34,7 @@ module sid_pot (
   // IOB
   // ---
 
+`ifndef VERILATOR
   SB_IO #(
       .PIN_TYPE   (6'b1101_00),
       .PULLUP     (1'b0),
@@ -46,6 +47,7 @@ module sid_pot (
       .D_OUT_0      (1'b0),
       .D_IN_0       (iob_i)
   );
+`endif  // VERILATOR
 
   // Control
   // -------

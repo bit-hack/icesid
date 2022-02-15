@@ -19,9 +19,9 @@ module filter15khz (
   assign oOut = s2;
 
   initial begin
-    s0 <= 0;
-    s1 <= 0;
-    s2 <= 0;
+    s0 = 0;
+    s1 = 0;
+    s2 = 0;
   end
 
   wire signed [15:0] c0 = $signed(16'h099b);  // 15Khz

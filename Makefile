@@ -9,8 +9,16 @@ else
 	include icesugar/Makefile.mk
 endif
 
+verilator:
+	verilator --cc --exe --build    \
+	-Wno-WIDTH                      \
+	$(ALL_ICESID_SRCS)              \
+	verilator/verilator.cpp         \
+	--top-module sid                \
+	-o icesidsim
+
 clean:
 	rm -rf $(BUILD_DIR) obj_dir
 
 .SECONDARY:
-.PHONY: all clean
+.PHONY: all clean verilator

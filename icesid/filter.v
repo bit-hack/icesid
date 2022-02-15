@@ -58,8 +58,8 @@ module filter (
 
   // 16x16 multiplier
   // note: multiplier takes 2 cycles from setting mulA/B to reading mulOut
-  wire signed [16:0] mulA;
-  wire        [15:0] mulB;
+  reg signed  [16:0] mulA;
+  reg         [15:0] mulB;
   wire signed [15:0] mulOut;
   mult16x16 mul (
       .clk    (clk),

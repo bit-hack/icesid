@@ -12,7 +12,7 @@ module sid (
     input                iWE,     // write enable
     input         [ 4:0] iAddr,   // sid address
     input         [ 7:0] iDataW,  // C64 to SID
-    output        [ 7:0] oDataR,  // SID to C64
+    output reg    [ 7:0] oDataR,  // SID to C64
     output signed [15:0] oOut,    // sid output
     inout                ioPotX,  // pot x pad
     inout                ioPotY   // pot y pad
@@ -222,11 +222,11 @@ module sid (
   //       register during a register read of write only reg.
   always @(*) begin
     case (iAddr)
-      'h19:    oDataR <= potX;
-      'h1a:    oDataR <= potY;
-      'h1b:    oDataR <= voiceOut2[11:4];  // osc3 MSB
-      'h1c:    oDataR <= envOut2;  // env3
-      default: oDataR <= regLastWrite;  // potx/poty
+      'h19:    oDataR = potX;
+      'h1a:    oDataR = potY;
+      'h1b:    oDataR = voiceOut2[11:4];  // osc3 MSB
+      'h1c:    oDataR = envOut2;  // env3
+      default: oDataR = regLastWrite;  // potx/poty
     endcase
   end
 
