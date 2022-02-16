@@ -24,6 +24,12 @@ module sid (
     regMode      = 0;
     regLastWrite = 0;
     reg3Off      = 0;
+
+`ifdef VERILATOR
+    $dumpfile("icesid.vcd");
+    $dumpvars;
+`endif
+
   end
 
   // oscillators
