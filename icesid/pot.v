@@ -6,6 +6,8 @@
 //          \/    \/        \/             \/
 `default_nettype none
 
+`ifndef VERILATOR
+
 module sid_pot (
     input  wire       clk,
     input  wire       clkEn,
@@ -89,3 +91,5 @@ module sid_pot (
   end
 
 endmodule  // sid_pot
+
+`endif  // ifndef VERILATOR

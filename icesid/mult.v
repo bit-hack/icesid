@@ -6,6 +6,8 @@
 //          \/    \/        \/             \/
 `default_nettype none
 
+/* verilator lint_off PINMISSING */
+
 // 16x16 multiplier for the filters
 module mult16x16 (
     input                clk,
@@ -49,7 +51,7 @@ module mdac16x4 (
       .A  (iVoice),
       .B  ({12'b0, iVol}),
       .O  (product),
-      .CLK(clk),
+      .CLK(clk)
   );
 
   defparam mac.A_SIGNED = 1'b1;  // voice is signed
@@ -77,7 +79,7 @@ module mdac12x8 (
       .A  ({iVoice, 4'b0}),
       .B  ({8'b0, iEnv}),
       .O  (product),
-      .CLK(clk),
+      .CLK(clk)
   );
 
   defparam mac.A_SIGNED = 1'b1;  // voice is signed
