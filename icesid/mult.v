@@ -41,14 +41,14 @@ endmodule
 // 16x4 multiplier used for master volume
 module mdac16x4 (
     input                clk,
-    input  signed [15:0] iVoice,
+    input  signed [15:0] iMix,
     input         [ 3:0] iVol,
     output signed [15:0] oOut
 );
 
   wire signed [31:0] product;  // 16x16 product
   SB_MAC16 mac (
-      .A  (iVoice),
+      .A  (iMix),
       .B  ({12'b0, iVol}),
       .O  (product),
       .CLK(clk)
@@ -93,3 +93,5 @@ module mdac12x8 (
     out <= product[23:8];
   end
 endmodule
+
+/* verilator lint_on PINMISSING */

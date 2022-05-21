@@ -42,14 +42,14 @@ module sid (
   wire [11:0] voiceOut1;
   wire [11:0] voiceOut2;
   sid_voices voices (
-      .clk(clk),
-      .clkEn(clkEn),
-      .iWE(iWE),
-      .iAddr(iAddr),
-      .iDataW(iDataW),
-      .oVoice0(voiceOut0),
-      .oVoice1(voiceOut1),
-      .oVoice2(voiceOut2)
+      .clk     (clk),
+      .clkEn   (clkEn),
+      .iWE     (iWE),
+      .iAddr   (iAddr),
+      .iDataW  (iDataW),
+      .oVoice0 (voiceOut0),
+      .oVoice1 (voiceOut1),
+      .oVoice2 (voiceOut2)
   );
 
   // envelope 0
@@ -57,12 +57,12 @@ module sid (
   sid_env #(
       .BASE_ADDR('h0)
   ) env0 (
-      .clk  (clk),
-      .clkEn(clkEn),
-      .iWE  (iWE),
-      .iAddr(iAddr),
-      .iData(iDataW),
-      .oOut (envOut0)
+      .clk   (clk),
+      .clkEn (clkEn),
+      .iWE   (iWE),
+      .iAddr (iAddr),
+      .iData (iDataW),
+      .oOut  (envOut0)
   );
 
   // envelope 1
@@ -70,12 +70,12 @@ module sid (
   sid_env #(
       .BASE_ADDR('h7)
   ) env1 (
-      .clk  (clk),
-      .clkEn(clkEn),
-      .iWE  (iWE),
-      .iAddr(iAddr),
-      .iData(iDataW),
-      .oOut (envOut1)
+      .clk   (clk),
+      .clkEn (clkEn),
+      .iWE   (iWE),
+      .iAddr (iAddr),
+      .iData (iDataW),
+      .oOut  (envOut1)
   );
 
   // envelope 2
@@ -83,30 +83,31 @@ module sid (
   sid_env #(
       .BASE_ADDR('he)
   ) env2 (
-      .clk  (clk),
-      .clkEn(clkEn),
-      .iWE  (iWE),
-      .iAddr(iAddr),
-      .iData(iDataW),
-      .oOut (envOut2)
+      .clk   (clk),
+      .clkEn (clkEn),
+      .iWE   (iWE),
+      .iAddr (iAddr),
+      .iData (iDataW),
+      .oOut  (envOut2)
   );
+
+`ifndef VERILATOR
 
   wire [7:0] potX;
   wire [7:0] potY;
 
-`ifndef VERILATOR
   sid_pot potx (
-      .clk(clk),
-      .clkEn(clkEn),
-      .ioPotPad(ioPotX),
-      .oPotVal(potX)
+      .clk      (clk),
+      .clkEn    (clkEn),
+      .ioPotPad (ioPotX),
+      .oPotVal  (potX)
   );
 
   sid_pot poty (
-      .clk(clk),
-      .clkEn(clkEn),
-      .ioPotPad(ioPotY),
-      .oPotVal(potY)
+      .clk      (clk),
+      .clkEn    (clkEn),
+      .ioPotPad (ioPotY),
+      .oPotVal  (potY)
   );
 `endif  // VERILATOR
 
@@ -120,22 +121,22 @@ module sid (
   reg signed [15:0] voiceAmp1;
   reg signed [15:0] voiceAmp2;
   mdac12x8 mdac0 (
-      clk,
-      voiceSigned0,
-      envOut0,
-      voiceAmp0
+      .clk     (clk),
+      .iVoice  (voiceSigned0),
+      .iEnv    (envOut0),
+      .oOut    (voiceAmp0)
   );
   mdac12x8 mdac1 (
-      clk,
-      voiceSigned1,
-      envOut1,
-      voiceAmp1
+      .clk     (clk),
+      .iVoice  (voiceSigned1),
+      .iEnv    (envOut1),
+      .oOut    (voiceAmp1)
   );
   mdac12x8 mdac2 (
-      clk,
-      voiceSigned2,
-      envOut2,
-      voiceAmp2
+      .clk     (clk),
+      .iVoice  (voiceSigned2),
+      .iEnv    (envOut2),
+      .oOut    (voiceAmp2)
   );
 
   // pre-filter mixer
@@ -165,25 +166,27 @@ module sid (
   wire signed [15:0] sidFilterBP;
   wire signed [15:0] sidFilterHP;
   filter sid_filter (
-      clk,
-      clkEn,
-      preFilter,
-      iWE,
-      iAddr,
-      iDataW,
-      sidFilterLP,
-      sidFilterBP,
-      sidFilterHP
+      .clk   (clk),
+      .clkEn (clkEn),
+      .iIn   (preFilter),
+      .iWE   (iWE),
+      .iAddr (iAddr),
+      .iData (iDataW),
+      .oLP   (sidFilterLP),
+      .oBP   (sidFilterBP),
+      .oHP   (sidFilterHP)
   );
 
-  // DC offset for digital sample volume hack
-  // Quoth resid:
+  // DC offset for digital sample volume
+  // Quote from resid:
+  //     The mixer has a small input DC offset. This is found as follows:
   //
-  // The mixer has a small input DC offset. This is found as follows:
+  //     The "zero" output level of the mixer measured on the SID audio
+  //     output pin is 5.50V at zero volume, and 5.44 at full
+  //     volume. This yields a DC offset of (5.44V - 5.50V) = -0.06V.
   //
-  // The "zero" output level of the mixer measured on the SID audio
-  // output pin is 5.50V at zero volume, and 5.44 at full
-  // volume. This yields a DC offset of (5.44V - 5.50V) = -0.06V.
+  //     The DC offset is thus -0.06V/1.05V ~ -1/18 of the dynamic range
+  //     of one voice.
   //
   // The DC offset is thus -0.06V/1.05V ~ -1/18 of the dynamic range
   // of one voice. See voice.cc for measurement of the dynamic
@@ -206,26 +209,26 @@ module sid (
   // clip after summing filter and bypass
   wire signed [15:0] preMasterVol;
   clipper post_filter_clip (
-      postFilter,
-      preMasterVol
+      .iIn  (postFilter),
+      .oOut (preMasterVol)
   );
 
   // master volume stage
   reg signed [15:0] postMasterVol;
   mdac16x4 master_vol (
-      clk,
-      preMasterVol,
-      regVolume,
-      postMasterVol
+      .clk  (clk),
+      .iMix (preMasterVol),
+      .iVol (regVolume),
+      .oOut (postMasterVol)
   );
 
   // output state
   wire signed [15:0] postOutStage;
   filter15khz outState (
-      .clk(clk),
-      .clkEn(clkEn),
-      .iIn(postMasterVol),
-      .oOut(postOutStage)
+      .clk   (clk),
+      .clkEn (clkEn),
+      .iIn   (postMasterVol),
+      .oOut  (postOutStage)
   );
 
   // SID output
@@ -241,20 +244,20 @@ module sid (
       'h1a:    oDataR = potY;
 `endif  // VERILATOR
       'h1b:    oDataR = voiceOut2[11:4];  // osc3 MSB
-      'h1c:    oDataR = envOut2;  // env3
-      default: oDataR = regLastWrite;  // potx/poty
+      'h1c:    oDataR = envOut2;          // env3
+      default: oDataR = regLastWrite;     // last written value
     endcase
   end
 
   // address/data decoder
-  reg [2:0] regFilt;  // voice routing
-  reg [2:0] regMode;  // filter mode
-  reg [3:0] regVolume;  // master volume
+  reg [2:0] regFilt;       // voice routing
+  reg [2:0] regMode;       // filter mode
+  reg [3:0] regVolume;     // master volume
   reg [7:0] regLastWrite;  // last writen value
-  reg       reg3Off;  // Oscillator 3 disconnect
+  reg       reg3Off;       // Oscillator 3 disconnect
   always @(posedge clk) begin
     if (iWE) begin
-      // kee track of the last write for read purposes
+      // keep track of the last write for read purposes
       regLastWrite <= iDataW;
       case (iAddr)
         'h17: regFilt <= iDataW[2:0];
@@ -267,3 +270,5 @@ module sid (
     end
   end
 endmodule
+
+/* verilator lint_on WIDTH */

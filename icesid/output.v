@@ -6,8 +6,6 @@
 //          \/    \/        \/             \/
 `default_nettype none
 
-/* verilator lint_off WIDTH */
-
 module filter15khz (
     input                clk,
     input                clkEn,
@@ -15,6 +13,7 @@ module filter15khz (
     output signed [15:0] oOut
 );
 
+`ifdef DISABLED
   reg signed [15:0] s0;
   reg signed [15:0] s1;
   reg signed [15:0] s2;
@@ -41,4 +40,11 @@ module filter15khz (
       s2 <= s2 + t2[30:15];
     end
   end
+`else
+  reg signed [15:0] t;
+  always @(posedge clk) begin
+    t <= iIn;
+  end
+  assign oOut = t;
+`endif
 endmodule

@@ -176,14 +176,14 @@ module sid_env (
   reg [3:0] regRel;  // envelope release
 
   sid_env_imp impl (
-      .clk  (clk),
-      .clkEn(clkEn),
-      .iGate(regGate),
-      .iAtt (regAtt),
-      .iDec (regDec),
-      .iSus (regSus),
-      .iRel (regRel),
-      .oOut (oOut)
+      .clk   (clk),
+      .clkEn (clkEn),
+      .iGate (regGate),
+      .iAtt  (regAtt),
+      .iDec  (regDec),
+      .iSus  (regSus),
+      .iRel  (regRel),
+      .oOut  (oOut)
   );
 
   initial begin
