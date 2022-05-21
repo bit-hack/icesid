@@ -82,7 +82,8 @@ char cycles=0, finished=0, dynCIA=0;
 void cSID_init(int samplerate);
 int SID(char num, unsigned int baseaddr); void initSID();
 void initCPU (unsigned int mempos);  byte CPU (); 
-void init (byte subtune);  void play(void* userdata, uint8_t *stream, int len );
+void init (byte subtune);
+void play(int len);
 unsigned int combinedWF(char num, char channel, unsigned int* wfarray, int index, char differ6581, byte freq);
 void createCombinedWF(unsigned int* wfarray, float bitmul, float bitstrength, float treshold);
 char isExt(char *filename, char* ext);
@@ -256,7 +257,7 @@ openSID: //I know I know, goto is harmful to you! But my code is ugly anyway. :)
 
  uint16_t samples[0x4000];
  while (!icesid_should_stop()) {
-   play(NULL, samples, sizeof(samples));
+   play(sizeof(samples));
  }
 
  icesid_finish();
@@ -291,10 +292,8 @@ void init(byte subt)
 }
 
 
-void play(void* userdata, uint8_t *stream, int len ) //called by SDL at samplerate pace
-{ 
- static int i,j, output;
- for(i=0;i<len;i+=2) {
+void play(int len ) {
+ for(int i=0;i<len;i+=2) {
   framecnt--; if (framecnt<=0) { framecnt=frame_sampleperiod; finished=0; PC=playaddr; SP=0xFF; } // printf("%d  %f\n",framecnt,playtime); }
   if (finished==0) {
    while (CPUtime<=clock_ratio) {
@@ -323,11 +322,11 @@ void play(void* userdata, uint8_t *stream, int len ) //called by SDL at samplera
    }
    CPUtime-=clock_ratio;
   }
-  output = SID(0,0xD400);
+  int output = SID(0,0xD400);
+
   if (SIDamount>=2) output += SID(1,SID_address[1]); 
   if (SIDamount==3) output += SID(2,SID_address[2]); 
-  stream[i]=output&0xFF;
-  stream[i+1]=output>>8;
+
   icesid_cpu_clock(1000000 / 44100);
   icesid_reference((int16_t)(output));
  }
