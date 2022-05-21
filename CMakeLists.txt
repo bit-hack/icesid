@@ -6,7 +6,7 @@ if (NOT verilator_FOUND)
   message(FATAL_ERROR "Verilator not found. Set VERILATOR_ROOT env var.")
 endif()
 
-add_executable(icesid verilator/main.cpp verilator/csid-light.c)
+add_executable(icesid verilator/icesid.cpp verilator/csid-light.c)
 
 file(GLOB VLG_SRC icesid/*.v)
 
