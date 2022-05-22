@@ -9,6 +9,7 @@
 module sid_env_imp (
     input        clk,
     input        clkEn,
+    input        iRst,
     input        iGate,
     input  [3:0] iAtt,
     input  [3:0] iDec,
@@ -20,9 +21,9 @@ module sid_env_imp (
   reg [7:0] env;  // envelope output value
   assign oOut = env;
 
-  localparam STAGE_ATT = 1;
+  localparam STAGE_ATT     = 1;
   localparam STAGE_DEC_SUS = 2;
-  localparam STAGE_REL = 4;
+  localparam STAGE_REL     = 4;
   reg [2:0] stage;
 
   wire [7:0] sustainVal = {iSus, iSus};
@@ -42,13 +43,13 @@ module sid_env_imp (
   always @(posedge clk) begin
     /* verilog_format: off */
     case (env)
-      8'hff: divMax <= 1;
-      8'h5d: divMax <= 2;
-      8'h36: divMax <= 4;
-      8'h1a: divMax <= 8;
-      8'h0e: divMax <= 16;
-      8'h06: divMax <= 30;
-      8'h00: divMax <= 1;
+      8'hff: divMax <= 0;
+      8'h5d: divMax <= 1;
+      8'h36: divMax <= 3;
+      8'h1a: divMax <= 7;
+      8'h0e: divMax <= 15;
+      8'h06: divMax <= 29;
+      8'h00: divMax <= 0;
       default: ;
     endcase
     /* verilog_format: on */
@@ -66,7 +67,7 @@ module sid_env_imp (
   reg [14:0] cntMax;
   always @(*) begin
     /* verilog_format: off */
-    case (rate)  // ATT      DEC/REL
+    case (rate)              //  ATT      DEC/REL
       4'hf: cntMax = 31250;  //   8s       24s
       4'he: cntMax = 19531;  //   5s       15s
       4'hd: cntMax = 11719;  //   3s        9s
@@ -101,65 +102,77 @@ module sid_env_imp (
     end
   end
 
+  // decay / release phase goes through a divider so they are longer
   reg [4:0] div;
   reg divRst;
   always @(posedge clk) begin
-    divRst <= 0;
-    if (cntRst) begin
-      if (div == 0) begin
-        divRst <= 1;
-        div <= divMax;
-      end else begin
-        div <= div - 1;
+    if (iRst) begin
+      divRst <= 0;
+      div    <= 0;
+    end else begin
+      divRst <= 0;
+      if (cntRst) begin
+        if (div == 0) begin
+          divRst <= 1;
+          div <= divMax;
+        end else begin
+          div <= div - 1;
+        end
       end
     end
   end
 
   always @(posedge clk) begin
-    case (1'b1)
-      stage[0]: begin
-        if (iGate) begin
-          if (env == 8'hff) begin
-            stage <= STAGE_DEC_SUS;
-          end else begin
-            if (cntRst) begin
-              env <= env + 1;
-            end
-          end
-        end else begin
-          stage <= STAGE_REL;
-        end
-      end
-      stage[1]: begin
-        if (iGate) begin
-          if (divRst) begin
-            if (env == sustainVal) begin
-              // sustain so do nothing
+    if (iRst) begin
+      env   <= 8'haa;
+      stage <= STAGE_REL;
+    end else begin
+      case (1'b1)
+        stage[0]: begin  // att
+          if (iGate) begin
+            if (env == 8'hff) begin
+              stage <= STAGE_DEC_SUS;
             end else begin
+              if (cntRst) begin
+                env <= env + 1;
+              end
+            end
+          end else begin
+            stage <= STAGE_REL;
+          end
+        end
+        stage[1]: begin  // dec/sus
+          if (iGate) begin
+            if (divRst) begin
+              if (env == sustainVal) begin
+                // sustain so do nothing
+              end else begin
+                env <= (env == 0) ? 0 : (env - 1);
+              end
+            end
+          end else begin
+            stage <= STAGE_REL;
+          end
+        end
+        stage[2]: begin  // rel
+          if (iGate) begin
+            stage <= STAGE_ATT;
+          end else begin
+            if (divRst) begin
               env <= (env == 0) ? 0 : (env - 1);
             end
           end
-        end else begin
-          stage <= STAGE_REL;
         end
-      end
-      stage[2]: begin
-        if (iGate) begin
-          stage <= STAGE_ATT;
-        end else begin
-          if (divRst) begin
-            env <= (env == 0) ? 0 : (env - 1);
-          end
-        end
-      end
-      default: stage <= STAGE_REL;
-    endcase
+        default: stage <= STAGE_REL;
+      endcase
+    end
   end
 endmodule
 
 module sid_env (
     input        clk,    // master clock
     input        clkEn,  // asserted at 1Mhz
+    input        iRst,   // reset
     input        iWE,    // write enable
     input  [4:0] iAddr,  // address bus
     input  [7:0] iData,  // data bus
@@ -178,6 +191,7 @@ module sid_env (
   sid_env_imp impl (
       .clk   (clk),
       .clkEn (clkEn),
+      .iRst  (iRst),
       .iGate (regGate),
       .iAtt  (regAtt),
       .iDec  (regDec),

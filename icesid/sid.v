@@ -9,6 +9,7 @@
 module sid (
     input                clk,     // Master clock
     input                clkEn,   // 1Mhz enable
+    input                iRst,    // sync. reset
     input                iWE,     // write enable
     input         [ 4:0] iAddr,   // sid address
     input         [ 7:0] iDataW,  // C64 to SID
@@ -57,6 +58,7 @@ module sid (
   ) env0 (
       .clk   (clk),
       .clkEn (clkEn),
+      .iRst  (iRst),
       .iWE   (iWE),
       .iAddr (iAddr),
       .iData (iDataW),
@@ -70,6 +72,7 @@ module sid (
   ) env1 (
       .clk   (clk),
       .clkEn (clkEn),
+      .iRst  (iRst),
       .iWE   (iWE),
       .iAddr (iAddr),
       .iData (iDataW),
@@ -83,6 +86,7 @@ module sid (
   ) env2 (
       .clk   (clk),
       .clkEn (clkEn),
+      .iRst  (iRst),
       .iWE   (iWE),
       .iAddr (iAddr),
       .iData (iDataW),

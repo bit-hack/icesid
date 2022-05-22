@@ -74,13 +74,14 @@ module top (
   wire signed [15:0] sidOut;
   wire [7:0] busDataR;
   sid the_sid (
-      .clk   (clk),  // Master clock
-      .clkEn (clkEn),  // 1Mhz enable
-      .iWE   (busWE),  // write data to sid addr
-      .iAddr (busAddr),  // SID address bus
+      .clk   (clk),       // Master clock
+      .clkEn (clkEn),     // 1Mhz enable
+      .iRst  (1'b0),      // reset
+      .iWE   (busWE),     // write data to sid addr
+      .iAddr (busAddr),   // SID address bus
       .iDataW(busDataW),  // C64 to SID
       .oDataR(busDataR),  // SID to C64
-      .oOut  (sidOut),  // SID output
+      .oOut  (sidOut),    // SID output
       .ioPotX(),
       .ioPotY()
   );
@@ -97,12 +98,12 @@ module top (
   // instanciate the I2S encoder
   wire i2sSampled;
   i2s_master_t i2s (
-      .CLK(clk),
-      .SMP(sidOut),
-      .SCK(SCK),
-      .BCK(BCLK),
-      .DIN(DATA),
-      .LCK(LRCLK),
+      .CLK    (clk),
+      .SMP    (sidOut),
+      .SCK    (SCK),
+      .BCK    (BCLK),
+      .DIN    (DATA),
+      .LCK    (LRCLK),
       .SAMPLED(i2sSampled)
   );
 

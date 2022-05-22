@@ -51,32 +51,33 @@ module top (
 
   sid_bus_if bus (
       // Pads
-      .pad_a({a4, a3, a2, a1, a0}),
-      .pad_d({d7, d6, d5, d4, d3, d2, d1, d0}),
-      .pad_r_wn(rw),
-      .pad_csn(cs_n),
-      .pad_phi2(phi2),
+      .pad_a    ({a4, a3, a2, a1, a0}),
+      .pad_d    ({d7, d6, d5, d4, d3, d2, d1, d0}),
+      .pad_r_wn (rw),
+      .pad_csn  (cs_n),
+      .pad_phi2 (phi2),
       // Internal bus
-      .bus_addr(bus_addr),
+      .bus_addr (bus_addr),
       .bus_rdata(bus_rdata),  // sid to c64
       .bus_wdata(bus_wdata),  // c64 to sid
-      .bus_we(bus_we),
-      .clk_en(clk_en),
+      .bus_we   (bus_we),
+      .clk_en   (clk_en),
       // Clock
-      .clk(sys_clk),
-      .rst(rst)
+      .clk      (sys_clk),
+      .rst      (rst)
   );
 
   // SID
   wire signed [15:0] sidOut;
   sid the_sid (
-      .clk   (sys_clk),  // Master clock
-      .clkEn (clk_en),  // 1Mhz enable
-      .iWE   (bus_we),  // write data to sid addr
-      .iAddr (bus_addr),  // SID address bus
+      .clk   (sys_clk),    // Master clock
+      .clkEn (clk_en),     // 1Mhz enable
+      .iRst  (1'b0),       // reset
+      .iWE   (bus_we),     // write data to sid addr
+      .iAddr (bus_addr),   // SID address bus
       .iDataW(bus_wdata),  // C64 to SID
       .oDataR(bus_rdata),  // SID to C64
-      .oOut  (sidOut),  // SID output
+      .oOut  (sidOut),     // SID output
       .ioPotX(pot_x),
       .ioPotY(pot_y)
   );
