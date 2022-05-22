@@ -96,6 +96,7 @@ extern void icesid_init       (int argc, char **args);
 extern int  icesid_should_stop(void);
 extern void icesid_finish     (void);
 extern void icesid_reference  (int16_t sample);
+extern void icesid_model      (int is6581);
 
 void mem_write(uint16_t addr, uint8_t data) {
   if (addr >= 0xd400 && addr <= 0xd7ff) {
@@ -227,11 +228,17 @@ openSID: //I know I know, goto is harmful to you! But my code is ugly anyway. :)
  if (requested_SID_model!=-1)
    printf(" (requested:%d)",requested_SID_model);
  printf("\n");
+
+
+ icesid_model(preferred_SID_model[0] == 6581);
+
  for (i=0;i<SIDamount;i++) {
-  if (requested_SID_model==8580 || requested_SID_model==6581)
-    SID_model[i] = requested_SID_model;
-  else
-    SID_model[i] = preferred_SID_model[i];
+   if (requested_SID_model == 8580 || requested_SID_model == 6581) {
+     SID_model[i] = requested_SID_model;
+   }
+   else {
+     SID_model[i] = preferred_SID_model[i];
+   }
  }
  OUTPUT_SCALEDOWN = SID_CHANNEL_AMOUNT * 16 + 26; 
  if (SIDamount==2)

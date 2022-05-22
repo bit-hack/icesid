@@ -3,6 +3,7 @@
 
 #include "verilated.h"
 #include "Vsid.h"
+#include "Vsid___024root.h"
 
 #include <queue>
 
@@ -29,6 +30,7 @@ extern void icesid_init       (int argc, char **args);
 extern int  icesid_should_stop(void);
 extern void icesid_finish     (void);
 extern void icesid_reference  (int16_t sample);
+extern void icesid_model      (int is6581);
 }  // extern "C"
 
 struct biquad {
@@ -82,6 +84,10 @@ static float noise() {
   x ^= x >> 17;
   x ^= x << 5;
   return .5f - float( x & 0xffff ) / float( UINT16_MAX );
+}
+
+void icesid_model(int is6581) {
+  rtl->rootp->sid__DOT__regIs6581 = is6581;
 }
 
 void icesid_write(uint8_t sid_reg, uint8_t value) {

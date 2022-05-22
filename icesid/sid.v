@@ -6,8 +6,6 @@
 //          \/    \/        \/             \/
 `default_nettype none
 
-/* verilator lint_off WIDTH */
-
 module sid (
     input                clk,     // Master clock
     input                clkEn,   // 1Mhz enable
@@ -29,7 +27,7 @@ module sid (
 //    $dumpfile("trace.vcd");
 //    $dumpvars;
 `endif  // VERILATOR
-
+    regIs6581    = 1;
     regVolume    = 4'hf;
     regFilt      = 0;
     regMode      = 0;
@@ -143,10 +141,12 @@ module sid (
   reg signed [15:0] preFilter;
   always @(posedge clk) begin
     // note: shifts are here to create some headroom
+    /* verilog_format: off */
     preFilter <=
-      (regFilt[0] ? (voiceAmp0 >>> 3) : 0) +
-      (regFilt[1] ? (voiceAmp1 >>> 3) : 0) +
-      (regFilt[2] ? (voiceAmp2 >>> 3) : 0);
+      (regFilt[0] ? (voiceAmp0 >>> 3) : 16'sd0) +
+      (regFilt[1] ? (voiceAmp1 >>> 3) : 16'sd0) +
+      (regFilt[2] ? (voiceAmp2 >>> 3) : 16'sd0);
+    /* verilog_format: on */
   end
 
   // filter bypass mixer
@@ -155,9 +155,9 @@ module sid (
     // note: shifts are here to create some headroom
     /* verilog_format: off */
     bypass <=
-      ( regFilt[0]            ? 0 : (voiceAmp0 >>> 3)) +
-      ( regFilt[1]            ? 0 : (voiceAmp1 >>> 3)) +
-      ((regFilt[2] | reg3Off) ? 0 : (voiceAmp2 >>> 3));
+      ( regFilt[0]            ? 16'sd0 : (voiceAmp0 >>> 3)) +
+      ( regFilt[1]            ? 16'sd0 : (voiceAmp1 >>> 3)) +
+      ((regFilt[2] | reg3Off) ? 16'sd0 : (voiceAmp2 >>> 3));
     /* verilog_format: on */
   end
 
@@ -172,6 +172,7 @@ module sid (
       .iWE   (iWE),
       .iAddr (iAddr),
       .iData (iDataW),
+      .i6581 (regIs6581),
       .oLP   (sidFilterLP),
       .oBP   (sidFilterBP),
       .oHP   (sidFilterHP)
@@ -191,19 +192,19 @@ module sid (
   // The DC offset is thus -0.06V/1.05V ~ -1/18 of the dynamic range
   // of one voice. See voice.cc for measurement of the dynamic
   // range.
-  parameter mixer_width = 17;
-  parameter real mixer_DC_num = -0.06;
-  parameter real mixer_DC_denom = 1.05;
-  parameter integer mixer_DC = $rtoi(mixer_DC_num/mixer_DC_denom * 2.0**mixer_width);
+  wire signed [16:0] mixer_DC = ~17'd3745;  // 65535 * (0.06 / 1.05)
 
   // post-filter mixer
-  reg signed [mixer_width-1:0] postFilter;
+  reg signed [16:0] postFilter;
   always @(posedge clk) begin
+    /* verilog_format: off */
     postFilter <=
       bypass +
-      (regMode[0] ? sidFilterLP : 0) +
-      (regMode[1] ? sidFilterBP : 0) +
-      (regMode[2] ? sidFilterHP : 0) + mixer_DC;
+      mixer_DC +
+      (regMode[0] ? 17'(sidFilterLP) : 17'sd0) +
+      (regMode[1] ? 17'(sidFilterBP) : 17'sd0) +
+      (regMode[2] ? 17'(sidFilterHP) : 17'sd0);
+    /* verilog_format: on */
   end
 
   // clip after summing filter and bypass
@@ -255,20 +256,15 @@ module sid (
   reg [3:0] regVolume;     // master volume
   reg [7:0] regLastWrite;  // last writen value
   reg       reg3Off;       // Oscillator 3 disconnect
+  reg       regIs6581;     // (non standard) select 6581 behaviour
   always @(posedge clk) begin
     if (iWE) begin
       // keep track of the last write for read purposes
       regLastWrite <= iDataW;
       case (iAddr)
         'h17: regFilt <= iDataW[2:0];
-        'h18: begin
-          regMode   <= iDataW[6:4];
-          regVolume <= iDataW[3:0];
-          reg3Off   <= iDataW[7];
-        end
+        'h18: { reg3Off, regMode, regVolume } <= iDataW;
       endcase
     end
   end
 endmodule
-
-/* verilator lint_on WIDTH */

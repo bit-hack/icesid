@@ -9,15 +9,16 @@
 /* verilator lint_off WIDTH */
 
 module filter (
-    input                clk,    // system clock
-    input                clkEn,  // clock enable
-    input  signed [15:0] iIn,    // filter input
-    input                iWE,    // data write
-    input         [ 4:0] iAddr,  // address bus
-    input         [ 7:0] iData,  // data bus
-    output signed [15:0] oLP,    // lowpass output
-    output signed [15:0] oBP,    // bandpass output
-    output signed [15:0] oHP     // highpass output
+    input                clk,     // system clock
+    input                clkEn,   // clock enable
+    input  signed [15:0] iIn,     // filter input
+    input                iWE,     // data write
+    input         [ 4:0] iAddr,   // address bus
+    input         [ 7:0] iData,   // data bus
+    input                i6581,   // use filter curve lookup table
+    output signed [15:0] oLP,     // lowpass output
+    output signed [15:0] oBP,     // bandpass output
+    output signed [15:0] oHP      // highpass output
 );
 
   reg signed [16:0] low;
@@ -86,7 +87,10 @@ module filter (
   end
 
   always @(posedge clk) begin
-    cutCoef <= fCurve[regFreq];
+
+    // the filter curve is optionally enabled
+    cutCoef <= i6581 ? fCurve[regFreq] : { regFreq, 5'd0 };
+
     // simple filter to reduce pops with fast cutoff changes.
     if (clkEn) begin
       cutCoefLag0 <= (cutCoefLag0 + cutCoef) >> 1;
