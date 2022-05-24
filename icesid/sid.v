@@ -23,12 +23,12 @@ module sid (
 );
 
   initial begin
-
 `ifdef VERILATOR
 //    $dumpfile("trace.vcd");
 //    $dumpvars;
 `endif  // VERILATOR
     regIs6581    = 1;
+    regUseDacs   = 1;
     regVolume    = 4'hf;
     regFilt      = 0;
     regMode      = 0;
@@ -94,6 +94,33 @@ module sid (
       .oOut  (envOut2)
   );
 
+  wire [7:0] envOut0Dac;
+  sid_dac8 dac8_0 (
+      .clk   (clk),
+      .iRst  (iRst),
+      .iIn   (envOut0),
+      .iStart(clkEn),
+      .oOut  (envOut0Dac)
+  );
+
+  wire [7:0] envOut1Dac;
+  sid_dac8 dac8_1 (
+      .clk   (clk),
+      .iRst  (iRst),
+      .iIn   (envOut1),
+      .iStart(clkEn),
+      .oOut  (envOut1Dac)
+  );
+
+  wire [7:0] envOut2Dac;
+  sid_dac8 dac8_2 (
+      .clk   (clk),
+      .iRst  (iRst),
+      .iIn   (envOut2),
+      .iStart(clkEn),
+      .oOut  (envOut2Dac)
+  );
+
 `ifndef VERILATOR
 
   wire [7:0] potX;
@@ -126,19 +153,19 @@ module sid (
   mdac12x8 mdac0 (
       .clk     (clk),
       .iVoice  (voiceSigned0),
-      .iEnv    (envOut0),
+      .iEnv    (regUseDacs ? envOut0Dac : envOut0),
       .oOut    (voiceAmp0)
   );
   mdac12x8 mdac1 (
       .clk     (clk),
       .iVoice  (voiceSigned1),
-      .iEnv    (envOut1),
+      .iEnv    (regUseDacs ? envOut1Dac : envOut1),
       .oOut    (voiceAmp1)
   );
   mdac12x8 mdac2 (
       .clk     (clk),
       .iVoice  (voiceSigned2),
-      .iEnv    (envOut2),
+      .iEnv    (regUseDacs ? envOut2Dac : envOut2),
       .oOut    (voiceAmp2)
   );
 
@@ -262,6 +289,7 @@ module sid (
   reg [7:0] regLastWrite;  // last writen value
   reg       reg3Off;       // Oscillator 3 disconnect
   reg       regIs6581;     // (non standard) select 6581 behaviour
+  reg       regUseDacs;    // use non linear DAC model
   always @(posedge clk) begin
     if (iWE) begin
       // keep track of the last write for read purposes

@@ -138,7 +138,8 @@ void icesid_cpu_clock(uint32_t clocks) {
     rtl->clkEn = 0;
 
     // non clock enable cycles
-    for (int i = 0; i < 5; ++i) {
+    // 8 cycles minimum for the DAC model to complate
+    for (int i = 0; i < 10; ++i) {
       cycle();
     }
   }
