@@ -1,5 +1,5 @@
 
-ICESID_SRCS     = sid.v env.v voice.v filter.v clip.v pot.v mult.v output.v
+ICESID_SRCS     = dac.v sid.v env.v voice.v filter.v clip.v pot.v mult.v output.v
 ALL_ICESID_SRCS = $(addprefix icesid/,$(ICESID_SRCS))
 BOARD           = reDIP-SID
 
