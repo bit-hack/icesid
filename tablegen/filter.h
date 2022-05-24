@@ -62,3 +62,27 @@ static const fc_point f0_points_8580[] = {
   { 2047, 12500 },   // 0xff 0x07
   { 2047, 12500 }    // 0xff 0x07 - repeated end point
 };
+
+static const double f0_6581_approx(double x) {
+
+  // 6th order polynomial aproximation
+  //
+  // because of the lower order of this curve it does not exhibit any
+  // discontinuities.
+
+  const double A = 200.17233570154443;
+  const double B =   1.969703033388254;
+  const double C =  -0.011122031244297738;
+  const double D =   0.00001405092015559062;
+  const double E =   0.000000006810684246034039;
+  const double F =  -0.000000000009139136228824852;
+  const double G =   0.0000000000000020211640198279443;
+
+  return A +
+         B * x +
+         C * x*x +
+         D * x*x*x +
+         E * x*x*x*x +
+         F * x*x*x*x*x +
+         G * x*x*x*x*x*x;
+}

@@ -73,6 +73,12 @@ static void gen_filter_tables(void) {
 
   write_filter_table("curve_6581.hex", f0_6581, points);
   write_filter_table("curve_8580.hex", f0_8580, points);
+
+  static uint16_t approx[points];
+  for (uint32_t i = 0; i < points; ++i) {
+    approx[i] = int32_t(f0_6581_approx(i));
+  }
+  write_table<uint16_t, false>("curve_6581_approx.hex", approx, points);
 }
 
 static void gen_dac_tables() {
