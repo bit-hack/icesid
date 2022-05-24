@@ -17,3 +17,11 @@ verilate(icesid
   TRACE
   VERILATOR_ARGS 
 )
+
+add_executable(
+  tablegen
+  tablegen/tablegen.cpp
+  tablegen/filter.h
+  tablegen/spline.h
+  tablegen/dac.h
+)
