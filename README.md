@@ -1,6 +1,6 @@
 # icesid
 
-Icesid is an open source FPGA reimplementation of the famous MOS 6581/8580 SID chip used in the Commadore 64.
+Icesid is an open source FPGA reimplementation of the famous MOS 6581/8580 SID chip used in the Commodore 64.
 
 The icesid design has been primarly written to run on the [reDIP-SID board](https://github.com/daglem/reDIP-SID) designed by [daglem](https://github.com/daglem). That means it can be used directly as a drop-in replacement for the SID chip in a C64.
 
