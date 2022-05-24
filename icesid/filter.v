@@ -86,10 +86,15 @@ module filter (
     regRes      = 0;
   end
 
+  // 2 * sin( pi * 12500 / 1000000 ) * 0x10000 = 5145 max
+  // reg freq = 11bits = 8191 max
+  // 8191 / 2 + (8191 / 8) = 5119
+  wire [15:0] cutCoef8580 = regFreq[10:1] + regFreq[10:3];
+
   always @(posedge clk) begin
 
     // the filter curve is optionally enabled
-    cutCoef <= i6581 ? fCurve[regFreq] : { regFreq, 5'd0 };
+    cutCoef <= i6581 ? fCurve[regFreq] : cutCoef8580;
 
     // simple filter to reduce pops with fast cutoff changes.
     if (clkEn) begin
@@ -142,8 +147,8 @@ module filter (
   end
 
   // address/data decoder
-  reg [10:0] regFreq;
-  reg [ 3:0] regRes;
+  reg [10:0] regFreq;  // 0 -> 8191 (0x1fff)
+  reg [ 3:0] regRes;   // 0 -> 15   (0xf)
   always @(posedge clk) begin
     if (iWE) begin
       case (iAddr)

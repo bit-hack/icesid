@@ -9,6 +9,7 @@
 module sid_voice (
     input         clk,      // master clock
     input         clkEn,    // asserted at 1Mhz
+    input         iRst,     // reset
     input         iWE,      // data write
     input  [ 4:0] iAddr,    // address bus
     input  [ 7:0] iData,    // data bus
@@ -59,15 +60,19 @@ module sid_voice (
   reg [23:0] phase;
   reg noiseClkLag;
   always @(posedge clk) begin
-    if (clkEn) begin
-      if (regTest || regSync && !iExtMSB && extMSBLag) begin
-        // reset due to sync or test bit being high
-        phase <= 0;
-      end else begin
-        phase <= phase + {8'd0, regFreq};
+    if (iRst) begin
+      phase <= 0;
+    end else begin
+      if (clkEn) begin
+        if (regTest || regSync && !iExtMSB && extMSBLag) begin
+          // reset due to sync or test bit being high
+          phase <= 0;
+        end else begin
+          phase <= phase + {8'd0, regFreq};
+        end
+        noiseClkLag <= phase[noiseClkBit];
+        extMSBLag   <= iExtMSB;
       end
-      noiseClkLag <= phase[noiseClkBit];
-      extMSBLag   <= iExtMSB;
     end
   end
 
@@ -96,8 +101,8 @@ module sid_voice (
   reg [11:0] wavNoise;
   always @(posedge clk) begin
     wavSaw   <= phase[23:12];
-    wavPulse <= (phase[23:12] >= regPW) ? 12'h000 : 12'hfff;
-    wavTri   <= ((phase[23] ^ (regRingMod & iExtMSB)) ? phase[22:11] : ~phase[22:11]);
+    wavPulse <= (phase[23:12] <= regPW) ? 12'h000 : 12'hfff;
+    wavTri   <= ((phase[23] ^ (regRingMod & iExtMSB)) ? ~phase[22:11] : phase[22:11]);
     wavNoise <= {lfsr[20], lfsr[18], lfsr[14], lfsr[11], lfsr[9], lfsr[5], lfsr[2], lfsr[0], 4'b0};
   end
 
@@ -108,9 +113,9 @@ module sid_voice (
   reg [11:0] wavMix;
   assign oOut = wavMix;
   always @(posedge clk) begin
-    wavMix <= (regSaw   ? wavSaw   : 12'h000) |
-              (regPulse ? wavPulse : 12'h000) |
-              (regTri   ? wavTri   : 12'h000) |
+    wavMix <= (regSaw   ? wavSaw   : 12'h000) ^
+              (regPulse ? wavPulse : 12'h000) ^
+              (regTri   ? wavTri   : 12'h000) ^
               (regNoise ? wavNoise : 12'h000);
   end
 
@@ -147,6 +152,7 @@ endmodule
 module sid_voices (
     input         clk,      // master clock
     input         clkEn,    // asserted at 1Mhz
+    input         iRst,     // reset
     input         iWE,      // data write
     input  [ 4:0] iAddr,    // address bus
     input  [ 7:0] iDataW,   // data bus
@@ -159,14 +165,15 @@ module sid_voices (
   sid_voice #(
       .BASE_ADDR('h0)
   ) voice0 (
-      .clk(clk),
-      .clkEn(clkEn),
-      .iWE(iWE),
-      .iAddr(iAddr),
-      .iData(iDataW),
+      .clk    (clk),
+      .clkEn  (clkEn),
+      .iRst   (iRst),
+      .iWE    (iWE),
+      .iAddr  (iAddr),
+      .iData  (iDataW),
       .iExtMSB(msb2),
-      .oMSB(msb0),
-      .oOut(oVoice0)
+      .oMSB   (msb0),
+      .oOut   (oVoice0)
   );
 
   // voice 1
@@ -174,14 +181,15 @@ module sid_voices (
   sid_voice #(
       .BASE_ADDR('h7)
   ) voice1 (
-      .clk(clk),
-      .clkEn(clkEn),
-      .iWE(iWE),
-      .iAddr(iAddr),
-      .iData(iDataW),
+      .clk    (clk),
+      .clkEn  (clkEn),
+      .iRst   (iRst),
+      .iWE    (iWE),
+      .iAddr  (iAddr),
+      .iData  (iDataW),
       .iExtMSB(msb0),
-      .oMSB(msb1),
-      .oOut(oVoice1)
+      .oMSB   (msb1),
+      .oOut   (oVoice1)
   );
 
   // voice 2
@@ -189,13 +197,14 @@ module sid_voices (
   sid_voice #(
       .BASE_ADDR('he)
   ) voice2 (
-      .clk(clk),
-      .clkEn(clkEn),
-      .iWE(iWE),
-      .iAddr(iAddr),
-      .iData(iDataW),
+      .clk    (clk),
+      .clkEn  (clkEn),
+      .iRst   (iRst),
+      .iWE    (iWE),
+      .iAddr  (iAddr),
+      .iData  (iDataW),
       .iExtMSB(msb1),
-      .oMSB(msb2),
-      .oOut(oVoice2)
+      .oMSB   (msb2),
+      .oOut   (oVoice2)
   );
 endmodule

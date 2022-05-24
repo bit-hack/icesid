@@ -43,6 +43,7 @@ module sid (
   sid_voices voices (
       .clk     (clk),
       .clkEn   (clkEn),
+      .iRst    (iRst),
       .iWE     (iWE),
       .iAddr   (iAddr),
       .iDataW  (iDataW),
