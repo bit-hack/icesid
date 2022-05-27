@@ -25,40 +25,22 @@ module sid_voice (
   parameter BASE_ADDR = 0;
 
   // voice related internal registers
-  reg [15:0] regFreq;    // frequency
-  reg [11:0] regPW;      // pulse width
-  reg        regNoise;   // wave-select noise enable
-  reg        regPulse;   // wave-select pulse enable
-  reg        regSaw;     // wave-select saw enable
-  reg        regTri;     // wave-select triangle enable
-  reg        regTest;    // test register
-  reg        regRingMod; // ring modulate
-  reg        regSync;    // oscillator sync
-
-  // initial conditions
-  initial begin
-    regFreq     = 0;
-    regPW       = 0;
-    regNoise    = 0;  // mute noise
-    regPulse    = 0;  // mute pulse
-    regSaw      = 0;  // mute sawtooth
-    regTri      = 0;  // mute triangle
-    regTest     = 0;
-    regRingMod  = 0;
-    regSync     = 0;
-    noiseClkLag = 0;
-    extMSBLag   = 0;
-    // accumulator's even bits are high on powerup
-    phase       = 24'h555555;
-  end
+  reg [15:0] regFreq    = 0;  // frequency
+  reg [11:0] regPW      = 0;  // pulse width
+  reg        regNoise   = 0;  // wave-select noise enable
+  reg        regPulse   = 0;  // wave-select pulse enable
+  reg        regSaw     = 0;  // wave-select saw enable
+  reg        regTri     = 0;  // wave-select triangle enable
+  reg        regTest    = 0;  // test register
+  reg        regRingMod = 0;  // ring modulate
+  reg        regSync    = 0;  // oscillator sync
 
   // phase accumulator
   // the oscillator frequency can be calculated as:
   //   Freq = (Mclk * reg_freq) / (16777215)
   assign oMSB = phase[23];
-  reg extMSBLag;
-  reg [23:0] phase;
-  reg noiseClkLag;
+  reg extMSBLag = 0;
+  reg [23:0] phase = 24'h555555;
   always @(posedge clk) begin
     if (iRst) begin
       phase <= 0;
@@ -76,29 +58,26 @@ module sid_voice (
     end
   end
 
-  initial begin
-    // lfsr must be non zero to produce noise
-    lfsr = 23'h7ffff8;
-  end
-
   // noise generator (23bit LFSR)
   // todo: noise lockup
-  reg [22:0] lfsr;
+  reg [22:0] lfsr = 23'h7fffff;
+  reg noiseClkLag = 0;
   always @(posedge clk) begin
     if (clkEn) begin
       // update noise when bit 19 goes high
+      noiseClkLag <= phase[noiseClkBit];
       if (phase[noiseClkBit] && !noiseClkLag) begin
-        lfsr <= {lfsr[21:0], (lfsr[22] ^ lfsr[21]) | regTest};
+        lfsr <= {lfsr[21:0], (regTest | lfsr[22]) ^ lfsr[17]};
       end
     end
   end
 
   // waveform generators
   // note: at this stage all waveforms are unsigned with center point at 'h800
-  reg [11:0] wavSaw;
-  reg [11:0] wavPulse;
-  reg [11:0] wavTri;
-  reg [11:0] wavNoise;
+  reg [11:0] wavSaw   = 12'd0;
+  reg [11:0] wavPulse = 12'd0;
+  reg [11:0] wavTri   = 12'd0;
+  reg [11:0] wavNoise = 12'd0;
   always @(posedge clk) begin
     wavSaw   <= phase[23:12];
     wavPulse <= (phase[23:12] <= regPW) ? 12'h000 : 12'hfff;
@@ -110,7 +89,7 @@ module sid_voice (
   // todo: the data sheet says the waveforms are "ANDed" together but that is
   //       not what happens. its much more complex than that, but for now lets
   //       do this and revise it later.
-  reg [11:0] wavMix;
+  reg [11:0] wavMix = 12'd0;
   assign oOut = wavMix;
   always @(posedge clk) begin
     wavMix <= (regSaw   ? wavSaw   : 12'h000) ^
