@@ -59,7 +59,7 @@ module sid_voice (
   end
 
   // noise generator (23bit LFSR)
-  // todo: noise lockup
+  // todo: noise lockup, handle reset
   reg [22:0] lfsr = 23'h7fffff;
   reg noiseClkLag = 0;
   always @(posedge clk) begin
