@@ -6,6 +6,37 @@
 //          \/    \/        \/             \/
 `default_nettype none
 
+
+module sid_combined_3(
+    input  [11:0] x,
+    output [11:0] oOut);
+  assign oOut = {
+    ((x & 12'h7fc) == 12'h7fc),
+    ((x & 12'h7e0) == 12'h7e0) | ((x & 12'h3fe) == 12'h3fe),
+    ((x & 12'h7e0) == 12'h7e0) | ((x & 12'h5ff) == 12'h5ff) | ((x & 12'h3f0) == 12'h3f0),
+    ((x & 12'h7e0) == 12'h7e0) | ((x & 12'h1f8) == 12'h1f8) | ((x & 12'h3f0) == 12'h3f0),
+    ((x & 12'h0fc) == 12'h0fc) | ((x & 12'h1f8) == 12'h1f8) | ((x & 12'h3f0) == 12'h3f0),
+    ((x & 12'h07e) == 12'h07e) | ((x & 12'h1f8) == 12'h1f8) | ((x & 12'h0fc) == 12'h0fc),
+    ((x & 12'h13f) == 12'h13f) | ((x & 12'h07e) == 12'h07e) | ((x & 12'h7fa) == 12'h7fa) | ((x & 12'h0bf) == 12'h0bf) | ((x & 12'h0fc) == 12'h0fc),
+    5'd0
+  };
+endmodule
+
+module sid_combined_7(
+    input  [11:0] x,
+    output [11:0] oOut);
+  assign oOut = {
+    ((x & 12'h7fc) == 12'h7fc) | ((x & 12'h7fb) == 12'h7fb),
+    ((x & 12'h7ef) == 12'h7ef) | ((x & 12'h7f7) == 12'h7f7) | ((x & 12'h7fc) == 12'h7fc) | ((x & 12'h7fb) == 12'h7fb) | ((x & 12'h3ff) == 12'h3ff),
+    ((x & 12'h7fc) == 12'h7fc) | ((x & 12'h3ff) == 12'h3ff) | ((x & 12'h7f7) == 12'h7f7) | ((x & 12'h7fb) == 12'h7fb),
+    ((x & 12'h7fc) == 12'h7fc) | ((x & 12'h3ff) == 12'h3ff) | ((x & 12'h7fb) == 12'h7fb),
+    ((x & 12'h7fd) == 12'h7fd) | ((x & 12'h3ff) == 12'h3ff) | ((x & 12'h7fe) == 12'h7fe),
+    ((x & 12'h7fd) == 12'h7fd) | ((x & 12'h3ff) == 12'h3ff) | ((x & 12'h7fe) == 12'h7fe),
+    ((x & 12'h3ff) == 12'h3ff) | ((x & 12'h7fe) == 12'h7fe),
+    5'd0
+  };
+endmodule
+
 module sid_voice (
     input         clk,      // master clock
     input         clkEn,    // asserted at 1Mhz
@@ -85,6 +116,12 @@ module sid_voice (
     wavNoise <= {lfsr[20], lfsr[18], lfsr[14], lfsr[11], lfsr[9], lfsr[5], lfsr[2], lfsr[0], 4'b0};
   end
 
+  // combined waveform
+  wire [11:0] waveComb3;
+  wire [11:0] waveComb7;
+  sid_combined_3 comb3Inst(.x(phase[23:12]), .oOut(waveComb3));
+  sid_combined_7 comb7Inst(.x(phase[23:12]), .oOut(waveComb7));
+
   // waveform mixer
   // todo: the data sheet says the waveforms are "ANDed" together but that is
   //       not what happens. its much more complex than that, but for now lets
@@ -92,10 +129,16 @@ module sid_voice (
   reg [11:0] wavMix = 12'd0;
   assign oOut = wavMix;
   always @(posedge clk) begin
-    wavMix <= (regSaw   ? wavSaw   : 12'h000) ^
-              (regPulse ? wavPulse : 12'h000) ^
-              (regTri   ? wavTri   : 12'h000) ^
-              (regNoise ? wavNoise : 12'h000);
+    case ({regPulse, regSaw, regTri})
+    3'h0: wavMix <= 0;
+    3'h1: wavMix <= wavTri;
+    3'h2: wavMix <= wavSaw;
+    3'h3: wavMix <= waveComb3;
+    3'h4: wavMix <= wavPulse;
+    3'h5: wavMix <= wavPulse ^ wavTri;  // todo
+    3'h6: wavMix <= wavPulse ^ wavSaw;  // todo
+    3'h7: wavMix <= waveComb7;
+    endcase
   end
 
   // address/data decoder
